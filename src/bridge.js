@@ -39,7 +39,7 @@ export class NativeBridge {
         // Close stdin to trigger firmware restoration; do not kill the native watchdog.
         this.child?.stdin.end();
         reject(new Error('Native bridge timed out; manual fan lease released.'));
-      }, op === 'fan-curve' ? 60000 : 20000);
+      }, ['fan-curve','fan-manual-policy'].includes(op) ? 60000 : 20000);
       this.pending.set(id, { resolve, reject, timer });
       this.child.stdin.write(JSON.stringify({ id, op, ...args }) + '\n', e => {
         if (e) { clearTimeout(timer); this.pending.delete(id); reject(e); }

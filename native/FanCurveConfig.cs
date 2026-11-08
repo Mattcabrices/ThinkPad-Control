@@ -1,4 +1,4 @@
-// Original MIT code. Reads and writes only the curve lines of the bundled engine's configuration.
+// Original MIT code. Writes only validated fan curves, offsets and manual temperature policy.
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,6 +10,8 @@ internal static class FanCurveConfig
     private static readonly Regex LevelLine=new(@"^Level=.*(?:\r?\n|$)",RegexOptions.Multiline);
     private static readonly Regex OffsetLine=new(@"^SensorOffset(\d+)=.*(?:\r?\n|$)",RegexOptions.Multiline);
     private static readonly Regex DormantOffsetLine=new(@"^// ThinkPadControlDormantAdjustment(\d+)=.*(?:\r?\n|$)",RegexOptions.Multiline);
+    private static readonly Regex ManualLimitLine=new(@"^ManModeExit=([^\r\n]*)(?:\r?\n|$)",RegexOptions.Multiline);
+    private static readonly Regex ManualAutomaticLine=new(@"^// ThinkPadControlManualLimitAutomatic=([^\r\n]*)(?:\r?\n|$)",RegexOptions.Multiline);
     private static string IniPath=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ThinkPad Control","engine","TPFanControl.ini");
 
     // Checked here as well as in the app: callers supply only numbers, and the top must be maximum fan speed.
@@ -56,6 +58,21 @@ internal static class FanCurveConfig
         result=result.Insert(start,block.ToString());
         return ActiveLine.Replace(result,m=>$"Active={(rows is null?ModeFirmware:ModeCurve)}"+(m.Value.EndsWith('\r')?"\r":""),1);
     }
+    public static (int Celsius,bool Automatic) ManualLimit(string ini) {
+        var limits=ManualLimitLine.Matches(ini);var modes=ManualAutomaticLine.Matches(ini);
+        if(limits.Count>1||modes.Count>1||limits.Count==1&&(!int.TryParse(limits[0].Groups[1].Value.Trim(),out var value)||value is <60 or >110)||
+           modes.Count==1&&modes[0].Groups[1].Value.Trim() is not ("0" or "1"))throw new InvalidOperationException("The fan engine's manual temperature policy is invalid.");
+        return (limits.Count==0?85:int.Parse(limits[0].Groups[1].Value.Trim()),modes.Count==0||modes[0].Groups[1].Value.Trim()=="1");
+    }
+    public static string RewriteManualLimit(string ini,int limit,bool automatic) {
+        if(limit is <60 or >110)throw new InvalidOperationException("Manual fan temperature limit must be 60–110°C.");
+        _=ManualLimit(ini);
+        var newline=ini.Contains("\r\n",StringComparison.Ordinal)?"\r\n":"\n";
+        var policy=$"ManModeExit={limit}{newline}// ThinkPadControlManualLimitAutomatic={(automatic?1:0)}{newline}";
+        var result=ManualAutomaticLine.Replace(ini,"");
+        return ManualLimitLine.IsMatch(result)?ManualLimitLine.Replace(result,_=>policy,1):result.TrimEnd('\r','\n')+newline+policy;
+    }
+    public static int ReadManualLimitInstalled() => ManualLimit(File.ReadAllText(IniPath,Encoding.Latin1)).Celsius;
     public sealed record Curve(int Active,int[][] Rows,int[][] Masks) {public int[][] DormantMasks {get;init;}=[];}
     public static Curve? Parse(string ini)
     {
@@ -86,17 +103,25 @@ internal static class FanCurveConfig
     }
     public static object? ReadInstalled()
     {
-        try{var curve=Parse(File.ReadAllText(IniPath,Encoding.Latin1));return curve is null?null:new{active=curve.Active,rows=curve.Rows,masks=curve.Masks,dormantMasks=curve.DormantMasks};}
-        catch(Exception e) when(e is IOException or UnauthorizedAccessException){return null;}
+        try{var ini=File.ReadAllText(IniPath,Encoding.Latin1);var curve=Parse(ini);var manual=ManualLimit(ini);return curve is null?null:new{active=curve.Active,rows=curve.Rows,masks=curve.Masks,dormantMasks=curve.DormantMasks,manualTemperatureLimit=manual.Celsius,manualTemperatureAutomatic=manual.Automatic};}
+        catch(Exception e) when(e is IOException or UnauthorizedAccessException or InvalidOperationException){return null;}
     }
     // The engine reads its configuration only when it starts. It returns the fan to firmware while stopped.
     // Latin1 keeps the upstream file's non-UTF-8 comments byte for byte.
     public static void Apply(int[][]? rows,int[][]? masks,Func<int,bool> confirmed)
+        => ApplyContent(ini=>Rewrite(ini,rows,masks),rows is null?ModeFirmware:ModeCurve,confirmed);
+    public static void ApplyManualLimit(int limit,bool automatic,Func<int,bool> confirmed) {
+        var mode=Parse(File.ReadAllText(IniPath,Encoding.Latin1))?.Active;
+        if(mode is not (ModeFirmware or ModeCurve))throw new InvalidOperationException("Return the fan to firmware or a saved curve before changing its temperature limit.");
+        ApplyContent(ini=>RewriteManualLimit(ini,limit,automatic),mode.Value,confirmed);
+    }
+    private static void ApplyContent(Func<string,string> rewrite,int mode,Func<int,bool> confirmed)
     {
         TpfcEngineTrust.EnsureTrustedService();
         var previous=File.ReadAllText(IniPath,Encoding.Latin1);
-        var mode=rows is null?ModeFirmware:ModeCurve;
-        Write(Rewrite(previous,rows,masks));
+        var candidate=rewrite(previous);
+        if(candidate==previous)return;
+        Write(candidate);
         try
         {
             RestartService();

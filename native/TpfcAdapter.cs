@@ -20,10 +20,12 @@ internal sealed class TpfcAdapter : IDisposable
     private bool restoring;
     private TimeSpan lastRestoreRequest = TimeSpan.Zero;
     public bool OwnsManual { get; private set; }
+    public int ManualTemperatureLimit { get; private set; } = 85;
     public string Status { get; private set; } = "TPFanCtrl2 connected. Read-back determines the current fan mode.";
 
-    public TpfcAdapter(string mapName = @"Global\TPFanControl_State", Func<TimeSpan>? clock = null)
+    public TpfcAdapter(string mapName = @"Global\TPFanControl_State", Func<TimeSpan>? clock = null, int manualTemperatureLimit = 85)
     {
+        SetManualTemperatureLimit(manualTemperatureLimit);
         now=clock ?? (()=>TimeSpan.FromMilliseconds(Environment.TickCount64)); lastChange=now();
         mapping = MemoryMappedFile.OpenExisting(mapName, MemoryMappedFileRights.ReadWrite);
         view = mapping.CreateViewAccessor(0,LayoutSize,MemoryMappedFileAccess.ReadWrite);
@@ -49,8 +51,13 @@ internal sealed class TpfcAdapter : IDisposable
     }
     private static int? Rpm(int lo,int hi) => lo is >=0 and <=255 && hi is >=0 and <=255 && (hi*256+lo)<20000 ? hi*256+lo : null;
     // A T14 Gen 3 has a slot fixed at 1, which must not count as the valid reading this requires.
-    public static bool ThermalSafe(State state) => state.Fresh && state.Temperatures.Any(t=>t>=10&&t<85) &&
-        state.Temperatures.Where(t=>t>0&&t<128).All(t=>t<85);
+    public static bool ThermalSafe(State state, int limit = 85) => limit is >=60 and <=110 && state.Fresh && state.Temperatures.Any(t=>t>=10&&t<limit) &&
+        state.Temperatures.Where(t=>t>0&&t<128).All(t=>t<limit);
+    public void SetManualTemperatureLimit(int limit) {
+        if(limit is <60 or >110)throw new InvalidOperationException("Manual fan temperature limit must be 60–110°C.");
+        if(OwnsManual)throw new InvalidOperationException("Return the fan to firmware before changing its temperature limit.");
+        ManualTemperatureLimit=limit;
+    }
     public void Renew(bool active)
     {
         if (active) leaseUntil=now().Add(TimeSpan.FromSeconds(10));
@@ -64,7 +71,7 @@ internal sealed class TpfcAdapter : IDisposable
         {
             if (restoring) throw new InvalidOperationException("Wait for verified firmware restoration before requesting manual control.");
             if (level is not (>=1 and <=7 or FullSpeedLevel)) throw new InvalidOperationException("ThinkPad fan level must be 1–7, or full speed.");
-            if (!ThermalSafe(state)) throw new InvalidOperationException("Valid, fresh EC temperatures below 85°C are required.");
+            if (!ThermalSafe(state,ManualTemperatureLimit)) throw new InvalidOperationException($"Valid, fresh EC temperatures below {ManualTemperatureLimit}°C are required.");
             if (state.Command!=state.Acknowledged) throw new InvalidOperationException("Another TPFanCtrl2 command is pending.");
             OwnsManual=true; restoring=false; leaseUntil=now().Add(TimeSpan.FromSeconds(10));
         }
@@ -87,7 +94,7 @@ internal sealed class TpfcAdapter : IDisposable
         else if(state.Fresh && OwnsManual && !restoring && pendingSequence.HasValue && state.Acknowledged==pendingSequence && state.Mode==3 && state.RawLevel is >=1 and <=7 or FullSpeedLevel)
         { pendingSequence=null; Status="Manual fan level verified by EC read-back."; }
         if (!OwnsManual) return;
-        if(restoring || now()>=leaseUntil || !ThermalSafe(state))
+        if(restoring || now()>=leaseUntil || !ThermalSafe(state,ManualTemperatureLimit))
         {
             // A lost acknowledgement must never leave a pending manual request in place.
             // Allow one normal five-second engine cycle before retrying a BIOS request.

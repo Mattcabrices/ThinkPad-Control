@@ -28,7 +28,7 @@ TpfcAdapter? tpfc = null;
 string? tpfcError = null;
 if (Environment.GetEnvironmentVariable("THINKPAD_TPFC") == "1")
 {
-    try { TpfcEngineTrust.EnsureTrustedService(); tpfc = new TpfcAdapter(); }
+    try { TpfcEngineTrust.EnsureTrustedService(); tpfc = new TpfcAdapter(manualTemperatureLimit:FanCurveConfig.ReadManualLimitInstalled()); }
     catch (Exception e) { tpfcError = "TPFanCtrl2 unavailable: " + e.Message; }
 }
 
@@ -164,16 +164,13 @@ try
             {
                 using var envelope=JsonDocument.Parse(line);
                 var operation=envelope.RootElement.GetProperty("op").GetString();
-                if(operation=="fan-curve")
+                if(operation is "fan-curve" or "fan-manual-policy")
                 {
                     id=envelope.RootElement.GetProperty("id").GetInt32();
                     try {
                         if(tpfc is null)throw new InvalidOperationException("Fan curves need the bundled fan engine.");
-                        lock(tpfcGate)if(tpfc.OwnsManual)throw new InvalidOperationException("Return the fan to firmware before changing its curve.");
-                        var rowsElement=envelope.RootElement.GetProperty("rows");
-                        int[][]? rows=rowsElement.ValueKind==JsonValueKind.Null?null:rowsElement.Deserialize<int[][]>();
-                        var masks=envelope.RootElement.TryGetProperty("masks",out var masksElement)&&masksElement.ValueKind==JsonValueKind.Array?masksElement.Deserialize<int[][]>():null;
-                        FanCurveConfig.Apply(rows,masks,mode=>{
+                        lock(tpfcGate)if(tpfc.OwnsManual)throw new InvalidOperationException("Return the fan to firmware before changing its configuration.");
+                        bool Confirmed(int mode) {
                             int start;lock(tpfcGate)start=tpfc.Read().Sequence;
                             var deadline=Environment.TickCount64+25000;
                             while(Environment.TickCount64<deadline){
@@ -181,7 +178,17 @@ try
                                 lock(tpfcGate){var s=tpfc.Read();if(s.Sequence!=start&&s.Fresh&&s.Mode==mode)return true;}
                             }
                             return false;
-                        });
+                        }
+                        if(operation=="fan-manual-policy") {
+                            var limit=envelope.RootElement.GetProperty("celsius").GetInt32();
+                            FanCurveConfig.ApplyManualLimit(limit,envelope.RootElement.GetProperty("automatic").GetBoolean(),Confirmed);
+                            lock(tpfcGate)tpfc.SetManualTemperatureLimit(FanCurveConfig.ReadManualLimitInstalled());
+                        } else {
+                            var rowsElement=envelope.RootElement.GetProperty("rows");
+                            int[][]? rows=rowsElement.ValueKind==JsonValueKind.Null?null:rowsElement.Deserialize<int[][]>();
+                            var masks=envelope.RootElement.TryGetProperty("masks",out var masksElement)&&masksElement.ValueKind==JsonValueKind.Array?masksElement.Deserialize<int[][]>():null;
+                            FanCurveConfig.Apply(rows,masks,Confirmed);
+                        }
                         Console.WriteLine(JsonSerializer.Serialize(new{id,result="Fan engine configuration applied."},jsonOptions));
                     } catch(Exception e){Console.WriteLine(JsonSerializer.Serialize(new{id,error=e.Message},jsonOptions));}
                     continue;

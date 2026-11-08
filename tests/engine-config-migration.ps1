@@ -29,6 +29,13 @@ foreach($invalid in @(
     $previous.Replace('SensorOffset11=30 -128 127','SensorOffset11=30 -1 1')
 )){Reject {Merge-FanConfiguration $template $invalid}}
 Reject {Merge-FanConfiguration ($template.Replace('SingleFan=1','SingleFan=0')) $previous}
+foreach($mode in @('1','2')) {
+    $saved=$previous.Replace('Active=2',"Active=$mode").Replace('ManModeExit=120','ManModeExit=90')+"// ThinkPadControlManualLimitAutomatic=0`n"
+    $preserved=Merge-FanConfiguration $template $saved
+    Check ($preserved.Contains('ManModeExit=90') -and $preserved.Contains('// ThinkPadControlManualLimitAutomatic=0')) 'Explicit manual cutoff must survive upgrades in both modes.'
+    Reject {Merge-FanConfiguration $template ($saved.Replace('ManModeExit=90','ManModeExit=111'))}
+    Reject {Merge-FanConfiguration $template ($saved+"// ThinkPadControlManualLimitAutomatic=1`n")}
+}
 $directory=Join-Path ([IO.Path]::GetTempPath()) ('ThinkPad-config-migration-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($directory)|Out-Null
 try{

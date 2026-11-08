@@ -53,7 +53,7 @@ test('fan-engine package preserves licenses/source and starts in firmware mode',
       const levels=[...ini.matchAll(new RegExp('^'+table+'=(.*)$','gm'))].map(row=>row[1].trim().split(/\s+/).map(Number));
       assert.deepEqual(levels,[[0,128,0,0]],'Engine thermal fallback must select firmware for every nonnegative temperature');
     }
-    assert.match(ini,/^ManModeExit=78\b/m,'Retain the upstream independent manual-mode thermal exit');
+    assert.match(ini,/^ManModeExit=85\b/m,'Unknown machines start with an independent conservative fallback before resolving their own manual limit');
     for(const name of ['TPFanCtrl2-source.zip','TPFanCtrl2-patched-source.zip','fan-engine-build.lock.json','TPFanCtrl2-single-fan.patch','PawnIO.Modules-source.zip','TPFanCtrl2-UNLICENSE.txt','PawnIO.Modules-LGPL-2.1.txt'])assert.ok(existsSync(join(root,'stage/notices/fan-engine',name)));
     const build=JSON.parse(readFileSync(join(root,'third-party/fan-engine-build.lock.json'),'utf8').replace(/^\uFEFF/,''));
     const manifest=JSON.parse(readFileSync(join(root,'stage/engine/installed-artifacts.json'),'utf8').replace(/^\uFEFF/,''));

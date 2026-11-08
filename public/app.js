@@ -57,6 +57,7 @@ async function command(value) {
   try {
     const result = await api('commands',value); state.snapshot = result.snapshot;
     if (value.type === 'fan') state.drafts.delete(value.id);
+    if (value.type === 'fan-manual-limit') state.drafts.delete('manual-temperature');
     if (value.type === 'fan-profile-save' || value.type === 'fan-profile-delete') state.drafts.delete('fan-profile');
     toast(result.message); state.activity = await api('activity');
   } catch(e) { toast(e.message,true); }
@@ -333,12 +334,24 @@ function fanPanel() {
     const fullSpeed=isLevel?button(fan.level===64?'Level 10 is on':'Level 10 · Boost mode','button',()=>command({type:'fan',id:fan.id,mode:'manual',level:64})):null;
     if(fullSpeed) fullSpeed.disabled=select.disabled||fan.level===64;
     if(fan.level===64) info.append(el('div','metric-detail','Max fan mode: highest, unregulated speed.'));
-    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),isLevel?el('p','fan-explanation curve-notice','Max fan mode (Level 10) runs the fan at its highest, unregulated speed. Expect more noise and wear with extended use.'):null,isLevel?el('p','fan-explanation','Manual Max mode takes about 10 seconds to spin up. Minimizing keeps manual control active. Closing the window returns manual control to firmware. A saved fan curve continues in either case. Fan Max mode does not enable CPU boost or raise CPU power limits.'):null,el('p','fan-explanation',fan.capability.available ? 'Manual control requires a live connection. If it expires for 10 seconds, or monitored temperatures reach 85°C, the worker requests firmware control.'+(isLevel?' The bundled engine also returns to firmware above its independent 78°C manual-mode limit.':'') : fan.capability.reason));box.append(row);
+    const policy=state.snapshot.fanProfiles?.manualTemperature;
+    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),isLevel?el('p','fan-explanation curve-notice','Max fan mode (Level 10) runs the fan at its highest, unregulated speed. Expect more noise and wear with extended use.'):null,isLevel?el('p','fan-explanation','Manual Max mode takes about 10 seconds to spin up. Minimizing keeps manual control active. Closing the window returns manual control to firmware. A saved fan curve continues in either case. Fan Max mode does not enable CPU boost or raise CPU power limits.'):null,el('p','fan-explanation',fan.capability.available ? `Manual control returns to firmware if the connection expires for 10 seconds, readings become unavailable, or monitored temperatures reach ${isLevel?policy?.celsius??85:85}°C. This includes manual Max mode.` : fan.capability.reason));
+    if(isLevel&&policy) {
+      const saved=state.drafts.get('manual-temperature')??{automatic:policy.automatic,celsius:policy.celsius};
+      const automatic=el('input');automatic.type='checkbox';automatic.checked=saved.automatic;automatic.setAttribute('aria-label','Use laptop thermal limit for manual fan control');
+      const temperature=el('input','mode-select');temperature.type='number';temperature.min='60';temperature.max='110';temperature.step='1';temperature.value=String(saved.celsius);temperature.setAttribute('aria-label','Manual fan temperature limit in Celsius');temperature.disabled=saved.automatic;
+      const remember=()=>state.drafts.set('manual-temperature',{automatic:automatic.checked,celsius:Number(temperature.value)});
+      automatic.addEventListener('change',()=>{temperature.disabled=automatic.checked;remember();});temperature.addEventListener('input',remember);
+      const save=button('Save temperature limit','button',()=>{const draft=state.drafts.get('manual-temperature')??saved;command({type:'fan-manual-limit',celsius:draft.automatic?null:draft.celsius});});
+      automatic.disabled=save.disabled=state.busy||state.stale||!fan.capability.available||fan.mode==='manual';temperature.disabled=automatic.disabled||saved.automatic;
+      row.append(el('h3','','Manual fan temperature limit'),append(el('label','fan-explanation'),automatic,el('span','',` Use laptop thermal limit (${policy.defaultCelsius}°C)`)),append(el('div','fan-actions'),temperature,el('span','','°C'),save),el('p','fan-explanation','Choose 60–110°C. Applies to manual levels and manual Max; at the cutoff the worker requests firmware control. This does not raise CPU thermal limits. Return to firmware before changing this setting.'));
+    }
+    box.append(row);
   }
   const snapshot=state.snapshot, firmware=snapshot.fanProfiles?.limit;
   const intelTarget=snapshot.cpuSteps?.hardware?.thermalTargetC;
   const reported=firmware??(Number.isFinite(intelTarget)?{celsius:intelTarget,source:'Intel thermal target'}:null);
-  box.append(el('p','fan-explanation',`${snapshot.cpu.name}: ${reported?`reported ${reported.source} is ${reported.celsius} \u00b0C.`:'A firmware thermal target is unavailable.'} The 78 \u00b0C engine exit and 85 \u00b0C worker watchdog are app safety thresholds, not this processor's thermal-junction maximum. ${Number.isFinite(intelTarget)?'Intel target readings may include a firmware offset below TjMax.':'A verified thermal-junction maximum is not reported by this sensor interface.'} Manual mode has no fixed total run-time limit; it continues while connected and below its safety thresholds.`));
+  box.append(el('p','fan-explanation',`${snapshot.cpu.name}: ${reported?`reported ${reported.source} is ${reported.celsius} \u00b0C.`:'A firmware thermal target is unavailable; the default manual cutoff is 85°C.'} This is not a verified thermal-junction maximum. Saved curves reach Max at their own Max temperature, independently of the manual cutoff. Manual mode has no fixed total run-time limit while the connection and temperature checks pass.`));
   return box;
 }
 function fanProfilesPanel() {
@@ -522,7 +535,7 @@ function activityPanel() {
   const box=panel('Control history','activity','Requested changes, read-back results and errors · stored locally');
   if (!state.activity.length) box.append(el('div','empty-state','Your control changes will appear here. No settings are applied automatically at startup.'));
   for (const event of state.activity) {
-    const c=event.command, title=c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`;
+    const c=event.command, title=c.type==='fan-manual-limit'?('Manual fan cutoff · '+(c.celsius===null?'Laptop default':c.celsius+' °C')):c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`;
     append(box,append(el('div',`event ${event.status}`),el('span','event-indicator'),append(el('div','event-info'),el('div','event-title',title),el('div','event-detail',`${event.status.toUpperCase()} · ${event.detail||'Awaiting verification'}`)),el('time','',new Date(event.requested_at).toLocaleTimeString())));
   }
   return box;

@@ -171,7 +171,11 @@ export class FanProfiles {
     for (const flat of flatSlots) recommended.set(flat.slot,flat.shift);
     const recommendedMasks = sortedMasks([...recommended]);
     const removedSlots = maskedSlots.filter(([slot]) => movingSlots.includes(slot)).map(([slot])=>slot);
+    const automatic=engine?.manualTemperatureAutomatic!==false;
+    const defaultCelsius=limit?.celsius??85;
+    const engineCelsius=Number.isInteger(engine?.manualTemperatureLimit)&&engine.manualTemperatureLimit>=60&&engine.manualTemperatureLimit<=110?engine.manualTemperatureLimit:null;
+    const manualTemperature={automatic,celsius:automatic?defaultCelsius:engineCelsius??defaultCelsius,defaultCelsius,engineCelsius};
     return { available: !reason, reason, limit, profiles, activeId: active?.id ?? null, curveSet, customCurve: curveSet && !active, minTemp: MIN_CURVE_TEMP,
-      flatSlots, maskedSlots, recommendedMasks, removedSlots, reapply: curveSet && JSON.stringify(sortedMasks(maskedSlots)) !== JSON.stringify(recommendedMasks) };
+      manualTemperature,flatSlots, maskedSlots, recommendedMasks, removedSlots, reapply: curveSet && JSON.stringify(sortedMasks(maskedSlots)) !== JSON.stringify(recommendedMasks) };
   }
 }

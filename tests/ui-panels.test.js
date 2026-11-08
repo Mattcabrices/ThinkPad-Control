@@ -40,6 +40,24 @@ test('live control panels render supported and unavailable fields without runtim
   assert.equal(vm.runInContext('ryzenPanel().children.length',context),1);
 });
 
+test('manual cutoff UI exposes machine default and custom value without confusing curve Max',async()=>{
+  const snapshot=await new DemoProvider().snapshot(),commands=[];
+  const state={snapshot,drafts:new Map(),busy:false,stale:false};
+  const make=(tag,cls,text)=>({...node(tag,text),events:{},addEventListener(name,fn){this.events[name]=fn;}});
+  const context=vm.createContext({state,Map,Number,Math,el:make,panel:()=>node('panel'),append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},button:(text,cls,action)=>({...node('button',text),action}),fmt:String,command:c=>commands.push(c)});
+  vm.runInContext(component('fanPanel','fanProfilesPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)];let nodes=walk(vm.runInContext('fanPanel()',context));
+  assert.ok(nodes.some(n=>n.text==='Manual fan temperature limit'));
+  assert.match(nodes.map(n=>n.text??'').join(' '),/This includes manual Max mode/);
+  const checkbox=nodes.find(n=>n.type==='checkbox'),input=nodes.find(n=>n.type==='number');
+  assert.equal(checkbox.checked,true);assert.equal(input.disabled,true);
+  checkbox.checked=false;checkbox.events.change();input.value='90';input.events.input();
+  nodes.find(n=>n.text==='Save temperature limit').action();
+  assert.deepEqual(JSON.parse(JSON.stringify(commands)),[{type:'fan-manual-limit',celsius:90}]);
+  snapshot.fans[0].mode='manual';nodes=walk(vm.runInContext('fanPanel()',context));
+  assert.equal(nodes.find(n=>n.text==='Save temperature limit').disabled,true);
+});
+
 test('pending boost recovery renders an explicit restore action even when maximum boost reads off',async()=>{
   const snapshot=await new DemoProvider().snapshot();snapshot.cpuSteps.maxBoostRecovery={ac:true,dc:false};
   const commands=[],switches=[];

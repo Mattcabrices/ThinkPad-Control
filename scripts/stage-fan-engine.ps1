@@ -29,7 +29,7 @@ foreach ($name in @('TPFanCtrl2-source.zip','PawnIO.Modules-source.zip','TPFanCo
 # Retain upstream defaults except startup, backend, hotkeys and firmware-only fallback.
 # TPFanCtrl2 mode 1 = BIOS. Never start its default smart curve or fan-off mode.
 $ini = Get-Content -Raw -LiteralPath (Join-Path $cache 'TPFanControl.upstream.ini')
-foreach ($pair in @(@('Active','1'),@('ManFanSpeed','4'),@('PortBackend','pawnio'),@('Hotkeys','0'))) {
+foreach ($pair in @(@('Active','1'),@('ManFanSpeed','4'),@('PortBackend','pawnio'),@('Hotkeys','0'),@('ManModeExit','85'))) {
     $pattern = '(?m)^' + $pair[0] + '=.*$'
     if ([regex]::Matches($ini,$pattern).Count -ne 1) { throw "Unexpected upstream configuration: $($pair[0])" }
     $ini = [regex]::Replace($ini,$pattern,($pair[0]+'='+$pair[1]+"`r"))
@@ -39,8 +39,9 @@ foreach ($pair in @(@('Active','1'),@('ManFanSpeed','4'),@('PortBackend','pawnio
 $singleFanPattern = '(?m)^//SingleFan=0\r?$'
 if ([regex]::Matches($ini,$singleFanPattern).Count -ne 1) { throw 'Unexpected upstream SingleFan default.' }
 $ini = [regex]::Replace($ini,$singleFanPattern,"SingleFan=1`r")
-# The reviewed engine exits manual mode into Smart at ManModeExit (78 C in this
-# upstream INI). SmartControl accepts 128 as the firmware-control register value.
+# The initial manual fallback is 85 C. Before manual control is applied, the app
+# synchronizes engine and worker to the laptop's reported limit or the user's
+# explicit manual cutoff. SmartControl accepts 128 as the firmware register value.
 # Replace both legacy curves so that this independent engine fallback returns
 # cooling to the firmware, including when our worker is no longer running.
 # No default T61 fan-off/low-speed curve is suitable for all supported ThinkPads.

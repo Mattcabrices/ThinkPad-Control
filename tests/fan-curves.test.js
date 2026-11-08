@@ -9,6 +9,53 @@ import { EcSlotWatch, FanProfiles, defaultProfiles, engineRows, firmwareThermalL
 const ryzen = limit => ({ ryzen: { available: true, current: { temperatureLimit: limit }, baseline: { temperatureLimit: limit } } });
 const levels = [55, 61, 66, 71, 76, 81, 85];
 
+test('manual fan cutoff defaults to each laptop target and custom policy survives curve changes',async()=>{
+  const profiles=new FanProfiles();
+  assert.equal(profiles.view(ryzen(86),{active:1,rows:[[0,128]],manualTemperatureLimit:78}).manualTemperature.celsius,86);
+  assert.equal(profiles.view({cpuSteps:{hardware:{thermalTargetC:95}}},{active:1,rows:[[0,128]]}).manualTemperature.celsius,95);
+  const fresh=new FanProfiles();assert.equal(fresh.view({},null).manualTemperature.defaultCelsius,85);
+  const provider=new DemoProvider();
+  await provider.command(validateCommand({type:'fan-manual-limit',celsius:90}));
+  await provider.command({type:'fan-profile-apply',id:'default-2'});
+  await provider.command({type:'fan-profile-firmware'});
+  assert.deepEqual((await provider.snapshot()).fanProfiles.manualTemperature,{automatic:false,celsius:90,defaultCelsius:85,engineCelsius:90});
+  await provider.command({type:'fan-manual-limit',celsius:null});
+  assert.equal((await provider.snapshot()).fanProfiles.manualTemperature.automatic,true);
+  for(const value of [59,111,85.5,'90',undefined])assert.throws(()=>validateCommand({type:'fan-manual-limit',celsius:value}));
+  assert.throws(()=>validateCommand({type:'fan-manual-limit',celsius:90,extra:true}));
+});
+
+test('live manual policy requires exact native read-back and cannot change an owned manual fan',async()=>{
+  const provider=new WindowsProvider({platform:'win32',runner:async()=> '{}'});
+  const curve={active:1,rows:[[0,128]],manualTemperatureLimit:78,manualTemperatureAutomatic:true};
+  let mode='auto',ignore=false;const writes=[];
+  provider.bridge={request:async(op,args)=>{
+    if(op==='fan-manual-policy'){writes.push(args);if(!ignore){curve.manualTemperatureLimit=args.celsius;curve.manualTemperatureAutomatic=args.automatic;}return 'applied';}
+    assert.equal(op,'snapshot');return {...ryzen(86),fanCurve:curve,fans:[{id:'tpfc/cooling-system',mode,capability:{available:true}}],sensors:[]};
+  }};
+  await provider.command({type:'fan-manual-limit',celsius:null});
+  assert.deepEqual(writes,[{celsius:86,automatic:true}]);
+  mode='manual';await assert.rejects(provider.command({type:'fan-manual-limit',celsius:90}),/Return the fan to firmware/);assert.equal(writes.length,1);
+  mode='auto';ignore=true;await assert.rejects(provider.command({type:'fan-manual-limit',celsius:90}),/read-back mismatch/);
+});
+
+test('manual fan request synchronizes the machine cutoff before writing a fan level',async()=>{
+  const provider=new WindowsProvider({platform:'win32',runner:async()=> '{}'});
+  const calls=[],curve={active:1,rows:[[0,128]],manualTemperatureLimit:78,manualTemperatureAutomatic:true};
+  let mode='auto',level=null;
+  provider.bridge={request:async(op,args)=>{
+    calls.push(op);
+    if(op==='fan-manual-policy'){curve.manualTemperatureLimit=args.celsius;curve.manualTemperatureAutomatic=args.automatic;return 'applied';}
+    if(op==='fan'){mode=args.mode;level=args.level;return {};}
+    if(op==='lease')return {};
+    assert.equal(op,'snapshot');return {...ryzen(86),fanCurve:curve,fans:[{id:'tpfc/cooling-system',controlUnit:'level',mode,level,capability:{available:true}}],sensors:[]};
+  }};
+  await provider.command({type:'fan',id:'tpfc/cooling-system',mode:'manual',level:64});
+  assert.ok(calls.indexOf('fan-manual-policy')<calls.indexOf('fan'));
+  await provider.command({type:'fan',id:'tpfc/cooling-system',mode:'manual',level:7});
+  assert.equal(calls.filter(op=>op==='fan-manual-policy').length,1,'No engine restart while changing levels under an already synchronized policy');
+});
+
 test('the limit comes from each machine, and nothing is assumed without a reading', () => {
   assert.equal(firmwareThermalLimit(ryzen(86)).celsius, 86);
   assert.equal(firmwareThermalLimit(ryzen(95)).celsius, 95);

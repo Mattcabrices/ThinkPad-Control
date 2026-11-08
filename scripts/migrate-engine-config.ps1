@@ -12,6 +12,18 @@ function Merge-FanConfiguration([string]$Template,[string]$Previous) {
     $modes=[regex]::Matches($Previous,'(?m)^Active=([^\r\n]*)\r?$')
     if($modes.Count -ne 1 -or $modes[0].Groups[1].Value.Trim() -notmatch '^[12]$'){throw 'Existing fan mode is invalid or manual. Return to firmware or a saved curve before upgrading.'}
     $mode=$modes[0].Groups[1].Value.Trim()
+    # Only the explicit app-owned numeric preference is retained. Legacy/unmarked
+    # manual cutoffs still use the new template until the app resolves this laptop.
+    $manualPolicy=[regex]::Matches($Previous,'(?m)^// ThinkPadControlManualLimitAutomatic=([^\r\n]*)\r?$')
+    if($manualPolicy.Count){
+        $cutoffs=[regex]::Matches($Previous,'(?m)^ManModeExit=([^\r\n]*)\r?$')
+        if($manualPolicy.Count -ne 1 -or $manualPolicy[0].Groups[1].Value.Trim() -notmatch '^[01]$' -or $cutoffs.Count -ne 1 -or $cutoffs[0].Groups[1].Value.Trim() -notmatch '^\d{2,3}$'){throw 'Invalid saved manual fan temperature policy.'}
+        $cutoff=[int]$cutoffs[0].Groups[1].Value.Trim()
+        if($cutoff -lt 60 -or $cutoff -gt 110){throw 'Saved manual fan temperature limit is outside the supported range.'}
+        if([regex]::Matches($Template,'(?m)^ManModeExit=\d+\r?$').Count -ne 1){throw 'New engine template has no unique manual cutoff.'}
+        $Template=[regex]::Replace($Template,'(?m)^ManModeExit=.*\r?$',"ManModeExit=$cutoff`r")
+        $Template=$Template.TrimEnd("`r","`n")+"`r`n// ThinkPadControlManualLimitAutomatic="+$manualPolicy[0].Groups[1].Value.Trim()+"`r`n"
+    }
     # Firmware retains only validated inert restoration metadata; active offsets
     # and all operating settings still come from the new firmware defaults.
     if($mode -eq '1'){

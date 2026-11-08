@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.26 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.27 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -8,6 +8,16 @@ under notices/fan-engine), BIOS-mode configuration, signed LpcACPIEC module,
 upstream licenses, credits and matching source archives.
 
 ## User installation flow
+
+Alpha.27 adds a configurable manual fan temperature cutoff, defaulting to the
+reported Ryzen firmware limit or Intel thermal target (85 C fallback if unknown).
+Users may select 60–110 C. Before manual control begins, worker and engine use the
+same selected cutoff. At that temperature the worker requests firmware, including
+for manual Max. Curves independently reach Max at their configured threshold.
+The preference survives upgrades; changing it reconnects the engine and requires
+firmware or curve mode. CPU thermal limits, curves and offsets are unchanged.
+High-temperature boundary tests use isolated telemetry, with no induced physical
+overheating. Installed validation of this new control remains pending.
 
 Returning from a saved curve to firmware removes active sensor corrections but
 retains the earlier valid offsets as inert comments in the same protected engine

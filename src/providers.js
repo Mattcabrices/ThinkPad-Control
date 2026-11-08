@@ -46,6 +46,7 @@ export function validateCommand(value) {
       typeof value.name === 'string' && typeof value.fanOff === 'boolean' && Array.isArray(value.levels)) return value;
   if (['fan-profile-apply','fan-profile-delete'].includes(value.type) && keys.every(k => ['type','id'].includes(k)) && typeof value.id === 'string' && value.id.length <= 64) return value;
   if (value.type === 'fan-profile-firmware' && keys.length === 1) return value;
+  if (value.type === 'fan-manual-limit' && keys.length===2 && keys.includes('celsius') && (value.celsius===null || Number.isInteger(value.celsius)&&value.celsius>=60&&value.celsius<=110)) return value;
   if (value.type === 'fan' && keys.every(k => ['type','id','mode','percent','level'].includes(k)) &&
       typeof value.id === 'string' && value.id.length <= 200 && ['auto','manual'].includes(value.mode) &&
       (value.mode === 'auto' ? value.percent === undefined && value.level === undefined :
@@ -127,7 +128,13 @@ export class DemoProvider {
     return snapshot;
   }
   async command(c) {
-    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{this.fanCurve=rows?{active:2,rows,masks,dormantMasks:[]}:{active:1,rows:[[0,128]],masks:[],dormantMasks:this.fanCurve.active===2?(this.fanCurve.masks??[]):(this.fanCurve.dormantMasks??[])};},()=>this.snapshot());
+    if(c.type==='fan-manual-limit') {
+      if(this.fanMode==='manual')throw new Error('Return the fan to firmware before changing its temperature limit.');
+      this.fanCurve.manualTemperatureAutomatic=c.celsius===null;
+      this.fanCurve.manualTemperatureLimit=c.celsius??(await this.snapshot()).fanProfiles.manualTemperature.defaultCelsius;
+      return 'Manual fan temperature limit saved. It does not change CPU thermal limits or fan curves.';
+    }
+    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{this.fanCurve=rows?{...this.fanCurve,active:2,rows,masks,dormantMasks:[]}:{...this.fanCurve,active:1,rows:[[0,128]],masks:[],dormantMasks:this.fanCurve.active===2?(this.fanCurve.masks??[]):(this.fanCurve.dormantMasks??[])};},()=>this.snapshot());
     if (c.type === 'ryzen-tune') {
       if(this.profile==='intel')throw new Error('Ryzen controls do not apply to Intel.');
       if (!c.restore && c.value > ({sustainedWatts:25,fastWatts:40,slowWatts:30,temperatureLimit:90})[c.setting]) throw new Error('This value is above the range for this machine.');
@@ -327,8 +334,24 @@ export class WindowsProvider {
     if (enabled) return 'Maximum boost set and verified in Windows policy. Firmware still limits actual speed.'+metadataWarning;
     return (unknown ? 'Maximum boost off. Earlier settings were unknown, so standard boost was set and verified.' : 'Maximum boost off. Earlier settings restored and verified.')+metadataWarning;
   }
+  async setManualFanLimit(celsius,state) {
+    const policy=state.fanProfiles?.manualTemperature;
+    if(!this.bridge||!policy||!state.fans.some(f=>f.id==='tpfc/cooling-system'&&f.capability.available))throw new Error('Manual temperature settings require the bundled ThinkPad fan engine.');
+    if(state.fans.some(f=>f.id==='tpfc/cooling-system'&&f.mode==='manual'))throw new Error('Return the fan to firmware before changing its temperature limit.');
+    const resolved=celsius??policy.defaultCelsius;
+    this.slotWatch.invalidate();
+    try{await this.bridge.request('fan-manual-policy',{celsius:resolved,automatic:celsius===null});}
+    finally{this.slotWatch.invalidate();}
+    const after=await this.snapshot(),observed=after.fanProfiles?.manualTemperature;
+    if(observed?.engineCelsius!==resolved||observed?.automatic!==(celsius===null))throw new Error('Manual fan temperature policy read-back mismatch.');
+    return after;
+  }
   async command(c) {
     let state = await this.snapshot(); // Always authorize against a fresh hardware inventory.
+    if(c.type==='fan-manual-limit') {
+      await this.setManualFanLimit(c.celsius,state);
+      return 'Manual fan temperature limit saved and verified. CPU thermal limits and fan curves are unchanged.';
+    }
     if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles, c, state, async (rows, masks) => {
       this.slotWatch.invalidate();
       try { return await this.bridge.request('fan-curve', { rows, masks }); }
@@ -427,6 +450,10 @@ export class WindowsProvider {
     if (!this.bridge || !fan?.capability.available) throw new Error(fan?.capability.reason || 'No supported writable fan control detected.');
     if ((fan.controlUnit === 'level' && c.mode === 'manual' && c.level === undefined) ||
         (fan.controlUnit !== 'level' && c.mode === 'manual' && c.percent === undefined)) throw new Error('Command unit does not match this fan controller.');
+    const policy=state.fanProfiles?.manualTemperature;
+    if(c.mode==='manual'&&c.id==='tpfc/cooling-system'&&policy&&policy.engineCelsius!==policy.celsius) {
+      state=await this.setManualFanLimit(policy.automatic?null:policy.celsius,state);
+    }
     try {
       await this.bridge.request('fan', { fanId: c.id, mode: c.mode, percent: c.percent, level: c.level });
       let verified = false;

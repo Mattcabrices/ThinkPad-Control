@@ -43,7 +43,7 @@ export class PipeBridge {
   async request(op,args={}) {
     await this.connect();const id=++this.sequence;
     return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>{this.pending.delete(id);this.child?.destroy();reject(new Error('Hardware worker timed out; fan lease released.'));},op==='fan-curve'?60000:20000);
+      const timer=setTimeout(()=>{this.pending.delete(id);this.child?.destroy();reject(new Error('Hardware worker timed out; fan lease released.'));},['fan-curve','fan-manual-policy'].includes(op)?60000:20000);
       this.pending.set(id,{resolve,reject,timer});
       this.child.write(JSON.stringify({id,op,...args})+'\n',e=>{if(e){clearTimeout(timer);this.pending.delete(id);reject(e);}});
     });
