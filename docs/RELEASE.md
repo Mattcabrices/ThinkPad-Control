@@ -33,8 +33,8 @@ the engine configuration. Unedited profiles apply directly; edited profiles use
 Save and apply. Failed saves never proceed to activation. Applying progress spans
 the full operation, and the display distinguishes actual firmware/manual control
 from a stored curve. Saving alone does not activate a curve. These changes require
-the matching updated worker and UI in a future package; alpha.28 remains installed
-until a separate upgrade is requested.
+the matching updated worker and UI. The alpha.29 package and installed handover
+check include both; see the current evidence and release-validation report below.
 
 Alpha.27 adds a configurable manual fan temperature cutoff, defaulting to the
 reported Ryzen firmware limit or Intel thermal target (85 C fallback if unknown).
@@ -140,9 +140,21 @@ the actual repository/release links and tested model list are available.
 
 ## Current evidence and remaining decisions
 
-Alpha.25 source fixes fan-status ownership: an old LHM disconnect reason is no longer reported merely because TPFanCtrl2 owns a manual fan. Watchdog and control behavior are unchanged. Alpha.24 remains the latest installed and physically checked build; its tag is pinned to ec637b91d0eaf3483f3c7971943a458d108987e9.
+Alpha.29 is the latest locally packaged and installed build. The application code
+at e5dabd7677d4ce6a5d64430a724aa0a6ddd29277 passed the hosted Windows build,
+197 local scoped application tests, 285 isolated native assertions, and packaged
+Ryzen/Intel GUI simulations. An approved T14s upgrade verified automatic hardware
+access, 111 immutable installed files, and preserved power/Ryzen settings and saved
+profiles. Physical Max-to-curve handover passed with ownership released; the
+starting effective curve configuration, saved profiles and firmware mode were
+restored and verified. See [release validation](RELEASE-VALIDATION.md) for the
+coverage and remaining stable-release gates. All packages remain unsigned.
 
-The public source is [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control). Alpha.23 adds configurable Max fan-curve thresholds and native background manual-fan renewal. Focused API/UI tests and a native desktop simulation pass. Installed payload hashes and automatic hardware reconnection were verified on the T14s, with the saved curve and CPU settings preserved. On the T14s on AC, a normal executable reopen followed by minimizing retained manual level 7 for a timed 12 seconds at about 3,800 RPM; closing returned the EC to firmware control and the original saved curve was restored. A separate direct hidden-window restoration path exposed a renewal issue. Alpha.24 adds a visibility hook and a passing native regression covering minimize, close, direct restore and renewed manual control. Longer sessions, other devices and suspend/crash behavior remain unverified.
+The public source is [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
+Earlier alpha.23/24 physical checks verified short minimized manual operation
+and close-to-firmware behavior on the T14s. Alpha.29 repeats the native lifecycle
+checks in isolated packaged simulations. This does not extend those earlier short
+hardware observations into long-session or cross-device certification.
 
 No public binary release or Reddit announcement has been published. Signing identity, clean-device policy acceptance, physical suspend/crash recovery and validation on Intel and additional Ryzen devices remain release gates. A development prerelease must clearly retain the unsigned, experimental status; it must not be labelled production-ready.
 

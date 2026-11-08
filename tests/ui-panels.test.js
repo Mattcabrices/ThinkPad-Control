@@ -229,3 +229,29 @@ test('activity uses descriptive fan profile actions instead of an undefined fan 
   const textOf=n=>[n.text??'',...n.children.map(textOf)].join(' '),text=textOf(vm.runInContext('activityPanel()',context));
   assert.match(text,/Save fan profile/);assert.match(text,/Apply fan profile/);assert.match(text,/Use firmware fan control/);assert.doesNotMatch(text,/undefined/);
 });
+
+test('sensor range reset covers filtered-out sensors and preserves recorded history without hardware writes',async()=>{
+  const snapshot=await new DemoProvider().snapshot(),history=[{at:'earlier',cpu:{temperature:60}}];
+  const state={snapshot,history,search:'CPU',sensorRanges:new Map(snapshot.sensors.map(s=>[s.id,{min:1,max:99}]))};
+  const make=(tag,cls,text)=>({...node(tag,text),events:{},addEventListener(type,fn){this.events[type]=fn;},replaceChildren(...children){this.children=children;}});
+  const context=vm.createContext({state,Map,Set,Number,Math,el:make,panel:(title,icon,subtitle,extra)=>{const p=node('panel',title);p.append(extra);return p;},append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},button:(text,cls,action)=>({...node('button',text),action}),fmt:String,render(){},toast(){},command(){throw Error('Sensor tools must never write hardware');}});
+  vm.runInContext(source.slice(source.indexOf('const SENSOR_CATEGORIES='),source.indexOf('function activityPanel()')),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],nodes=walk(vm.runInContext('sensorsPanel()',context));
+  const textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
+  assert.match(textOf(nodes.find(n=>n.id==='sensor-readings')),/CPU package/);
+  assert.doesNotMatch(textOf(nodes.find(n=>n.id==='sensor-readings')),/GPU core/);
+  nodes.find(n=>n.text==='Reset Min/Max').action();
+  for(const sensor of snapshot.sensors){const range=state.sensorRanges.get(sensor.id);assert.equal(range.min,sensor.value);assert.equal(range.max,sensor.value);}
+  assert.equal(state.history,history);assert.equal(history.length,1);
+});
+
+test('telemetry refresh updates filtered sensor readings while search stays focused',async()=>{
+  const snapshot=await new DemoProvider().snapshot();snapshot.sensors.find(s=>s.group==='CPU').value=73.4;
+  const state={snapshot,view:'sensors',search:'CPU',stopped:false},readings={replaceChildren(tree){this.tree=tree;}};
+  let renders=0;
+  const context=vm.createContext({state,Map,Set,Number,Math,window:{thinkpadDesktop:true},document:{activeElement:{getAttribute:()=> 'Find a sensor'}},$:selector=>{assert.equal(selector,'#sensor-readings');return readings;},el:(tag,cls,text)=>node(tag,text),append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},fmt:String,render(){renders++;},api:async path=>path==='state'?{snapshot,stale:false,error:null}:[]});
+  vm.runInContext('let refreshPromise;'+source.slice(source.indexOf('const SENSOR_CATEGORIES='),source.indexOf('function sensorsPanel()'))+source.slice(source.indexOf('async function refresh()'),source.indexOf('async function start()')),context);
+  await vm.runInContext('refresh()',context);
+  const textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
+  assert.match(textOf(readings.tree),/73\.4/);assert.doesNotMatch(textOf(readings.tree),/GPU core/);assert.equal(state.search,'CPU');assert.equal(renders,1);
+});
