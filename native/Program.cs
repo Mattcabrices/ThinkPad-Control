@@ -92,10 +92,10 @@ object Snapshot()
         capability = new { available = false, reason = "RPM sensor detected; no writable fan interface exposed." }
     });
     var fanObjects = fans.Cast<object>().Concat(readOnly.Cast<object>()).ToList();
-    object[] tpfcSensors=[];bool tpfcOwned;string? tpfcStatus;
+    object[] tpfcSensors=[];string? tpfcStatus;
     lock(tpfcGate) {
         if(tpfc is not null){fanObjects.Insert(0,tpfc.FanSnapshot());tpfcSensors=tpfc.SensorSnapshots().ToArray();}
-        tpfcOwned=tpfc?.OwnsManual==true;tpfcStatus=tpfc?.Status;
+        tpfcStatus=tpfc?.Status;
     }
     float? Pick(IHardware gpu, SensorType type, string preferred) => sensors
         .Where(s => s.Hardware == gpu && s.SensorType == type && s.Value.HasValue)
@@ -119,8 +119,9 @@ object Snapshot()
             clock = Pick(h,SensorType.Clock,"core"), power = Pick(h,SensorType.Power,"package"),
             memoryUsed = Pick(h,SensorType.SmallData,"used"), memoryTotal = Pick(h,SensorType.SmallData,"total")
         }),
-        // The last fan reason only matters while software holds a fan or a restoration is outstanding.
-        fans = fanObjects, warnings = new[] { tpfcOwned || owned.Count > 0 || restorePending ? lastReason : null, tpfcStatus, tpfcError }.Where(s=>s is not null).Concat(thermals?.Warnings ?? []).Concat(monitoring?.Current.Warnings??[])
+        // lastReason belongs to LHM controls. TPFC reports its own current status;
+        // owning a TPFC fan must not resurrect an old LHM disconnect message.
+        fans = fanObjects, warnings = new[] { owned.Count > 0 || restorePending ? lastReason : null, tpfcStatus, tpfcError }.Where(s=>s is not null).Concat(thermals?.Warnings ?? []).Concat(monitoring?.Current.Warnings??[])
     };
 }
 

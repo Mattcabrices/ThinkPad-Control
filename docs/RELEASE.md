@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.24 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.25 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -94,6 +94,8 @@ checksums together as a GitHub prerelease. Publish no Reddit announcement until
 the actual repository/release links and tested model list are available.
 
 ## Current evidence and remaining decisions
+
+Alpha.25 source fixes fan-status ownership: an old LHM disconnect reason is no longer reported merely because TPFanCtrl2 owns a manual fan. Watchdog and control behavior are unchanged. Alpha.24 remains the latest installed and physically checked build; its tag is pinned to ec637b91d0eaf3483f3c7971943a458d108987e9.
 
 The public source is [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control). Alpha.23 adds configurable Max fan-curve thresholds and native background manual-fan renewal. Focused API/UI tests and a native desktop simulation pass. Installed payload hashes and automatic hardware reconnection were verified on the T14s, with the saved curve and CPU settings preserved. On the T14s on AC, a normal executable reopen followed by minimizing retained manual level 7 for a timed 12 seconds at about 3,800 RPM; closing returned the EC to firmware control and the original saved curve was restored. A separate direct hidden-window restoration path exposed a renewal issue. Alpha.24 adds a visibility hook and a passing native regression covering minimize, close, direct restore and renewed manual control. Longer sessions, other devices and suspend/crash behavior remain unverified.
 
