@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.27 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.28 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship

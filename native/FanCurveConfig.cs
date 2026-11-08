@@ -120,7 +120,8 @@ internal static class FanCurveConfig
         TpfcEngineTrust.EnsureTrustedService();
         var previous=File.ReadAllText(IniPath,Encoding.Latin1);
         var candidate=rewrite(previous);
-        if(candidate==previous)return;
+        // The same INI can be running in temporary firmware/manual mode. An
+        // explicit Apply must restart and confirm the requested operating mode.
         Write(candidate);
         try
         {
