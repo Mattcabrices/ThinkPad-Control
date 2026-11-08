@@ -118,3 +118,24 @@ source/release URLs here before posting. Please report machine type, CPU/GPU and
 BIOS/driver versions, without serial numbers.
 
 
+### Owned fan-engine crash recovery
+
+The installer configures the verified bundled TPFanControl service for two crash
+restart attempts, delayed by 5 and 15 seconds, followed by no further action.
+The policy resets its failure counter after one day without a failure. No reboot
+or recovery command is configured. Existing startup type and running state are
+unchanged by this configuration step; normal installation still starts its owned
+engine. Windows repeats the final action, which is explicitly NONE here.
+
+Configuration requires the exact protected service path and reviewed engine/module
+hashes. The helper checks actual policy read-back and attempts verified rollback
+on failure, reporting an unverified rollback explicitly. It does not change the
+failure-actions flag or configure an external fan service. Windows may retain an
+already queued restart after a manual stop; disabling the service prevents that
+restart. See [Microsoft's service configuration documentation](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-changeserviceconfig2w).
+
+Isolated transaction tests cover rejected ownership, initial read failure,
+idempotence, ignored/partial writes, rollback failure and lost ownership. These
+tests do not certify live engine crash recovery: an approved installed upgrade
+and a separate controlled hardware test are still required.
+

@@ -13,6 +13,7 @@
     <Compile Include="../native/SensorSession.cs" Link="SensorSession.cs" />
     <Compile Include="../native/SensorReadings.cs" Link="SensorReadings.cs" />
     <Compile Include="../native/IndependentWatchdog.cs" Link="IndependentWatchdog.cs" />
+    <Compile Include="../native/EngineServiceRecovery.cs" Link="EngineServiceRecovery.cs" />
     <Compile Include="../native/RyzenController.cs" Link="RyzenController.cs" />
     <Compile Include="../native/ThermalReadings.cs" Link="ThermalReadings.cs" />
     <Compile Include="../native/FanCurveConfig.cs" Link="FanCurveConfig.cs" />

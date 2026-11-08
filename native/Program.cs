@@ -1,5 +1,10 @@
 using System.Text.Json;
 using LibreHardwareMonitor.Hardware;
+if(args.Length==1&&args[0]=="--configure-engine-recovery") {
+    try {EngineServiceRecovery.Configure();Console.WriteLine("Owned engine crash recovery configured and verified.");}
+    catch(Exception e){Console.Error.WriteLine(e.Message);Environment.ExitCode=1;}
+    return;
+}
 using var privatePipe = await PrivatePipe.Connect(args);
 
 // Private stdio protocol. Never bind a privileged sensor bridge to a network port.

@@ -13,6 +13,32 @@ void Check(bool value,string message) { if(!value) throw new Exception(message);
 void Reject(Action action,string message) { try { action(); } catch(InvalidOperationException) { checks++;return; } throw new Exception(message); }
 void Publish(int mode,int raw) { view.Write(8,view.ReadInt32(4));view.Write(12,mode);view.Write(20,raw);view.Write(0,view.ReadInt32(0)+1); }
 
+// Isolated installer recovery transaction; never opens the real service manager.
+var oldRecovery=new EngineServiceRecovery.Policy(0,"","",[]);
+var desiredRecovery=EngineServiceRecovery.Desired;
+Check(desiredRecovery.Actions.SequenceEqual(new EngineServiceRecovery.RecoveryAction[]{new(1,5000),new(1,15000),new(0,0)})&&desiredRecovery.Command==""&&desiredRecovery.RebootMessage=="","Recovery is bounded to two restarts, then NONE; never run or reboot.");
+var recoveryState=oldRecovery;var recoveryWrites=0;var recoveryReads=0;
+Reject(()=>EngineServiceRecovery.Apply(()=>throw new InvalidOperationException("untrusted"),()=>{recoveryReads++;return recoveryState;},p=>recoveryWrites++),"Untrusted service must refuse.");
+Check(recoveryReads==0&&recoveryWrites==0,"Trust refusal precedes all configuration access.");
+Reject(()=>EngineServiceRecovery.Apply(()=>{},()=>throw new InvalidOperationException("read denied"),p=>recoveryWrites++),"Initial read failure must refuse.");
+Check(recoveryWrites==0,"Failed initial read must not write.");
+EngineServiceRecovery.Apply(()=>{},()=>recoveryState,p=>{recoveryWrites++;recoveryState=p;});
+Check(EngineServiceRecovery.Same(recoveryState,desiredRecovery)&&recoveryWrites==1,"Successful configuration is read back.");
+EngineServiceRecovery.Apply(()=>{},()=>recoveryState,p=>recoveryWrites++);
+Check(recoveryWrites==1,"Already configured recovery is idempotent.");
+recoveryState=oldRecovery;recoveryWrites=0;
+try {EngineServiceRecovery.Apply(()=>{},()=>recoveryState,p=>recoveryWrites++);throw new Exception("Ignored write must fail");}
+catch(InvalidOperationException e){Check(e.Message.Contains("restored and verified")&&recoveryWrites==2,"Ignored write fails with verified restoration.");}
+recoveryState=oldRecovery;recoveryWrites=0;
+try {EngineServiceRecovery.Apply(()=>{},()=>recoveryState,p=>{recoveryState=p;if(++recoveryWrites==1)throw new InvalidOperationException("partial failure");});throw new Exception("Partial write must fail");}
+catch(InvalidOperationException e){Check(e.Message.Contains("restored and verified")&&EngineServiceRecovery.Same(recoveryState,oldRecovery),"Partial write rolls back and verifies original configuration.");}
+recoveryState=oldRecovery;recoveryWrites=0;recoveryReads=0;
+try {EngineServiceRecovery.Apply(()=>{},()=>{if(++recoveryReads==2)throw new InvalidOperationException("verification denied");return recoveryState;},p=>{if(++recoveryWrites==1)recoveryState=p;});throw new Exception("Ignored rollback must fail");}
+catch(InvalidOperationException e){Check(e.Message.Contains("rollback is unverified"),"Failed rollback must never report success.");}
+recoveryState=oldRecovery;recoveryWrites=0;var trustChecks=0;
+try {EngineServiceRecovery.Apply(()=>{if(++trustChecks>=3)throw new InvalidOperationException("ownership lost");},()=>recoveryState,p=>{recoveryWrites++;recoveryState=p;});throw new Exception("Lost ownership must fail");}
+catch(InvalidOperationException e){Check(e.Message.Contains("rollback is unverified")&&recoveryWrites==1,"Lost trust prevents further writes, including rollback.");}
+
 var intelLimitBits=120UL|(1UL<<15)|(1UL<<16)|(0x6EUL<<17)|(280UL<<32)|(1UL<<47)|(0x2AUL<<49)|(1UL<<63);
 var intelLimits=IntelPowerLimits.Decode(3UL|(10UL<<16),intelLimitBits);
 Check(intelLimits.Available&&intelLimits.ReadOnly&&intelLimits.Locked==true,"Locked Intel limits remain visible and read-only.");

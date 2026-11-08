@@ -1,5 +1,9 @@
 param([ValidateSet('Inspect','Install','InstallWorker','Remove','StopOwned')][string]$Action = 'Inspect')
 $workerTaskName = 'ThinkPad Control Hardware Worker'
+function Set-OwnedEngineRecovery($AppRoot) {
+    $process = Start-Process -FilePath (Join-Path $AppRoot 'bridge\ThinkPad.Bridge.exe') -ArgumentList '--configure-engine-recovery' -Wait -PassThru -WindowStyle Hidden
+    if ($process.ExitCode -ne 0) { throw 'Owned engine crash recovery configuration failed.' }
+}
 # Lets the app start its worker without a UAC prompt each time. It runs only when the app starts it, exits when the
 # app disconnects, and uninstall removes it. It is registered once, under the approval given to setup.
 function Install-WorkerTask($AppRoot, [bool]$UseFanEngine) {
@@ -51,6 +55,9 @@ if ($Action -eq 'StopOwned') {
     exit 0
 }
 if ($Action -eq 'InstallWorker') {
+    if ($owned) {
+        Set-OwnedEngineRecovery $appRoot
+    }
     Install-WorkerTask $appRoot $owned
     exit 0
 }
@@ -124,6 +131,7 @@ if (-not $owned) {
 try {
     $installed = Get-CimInstance Win32_Service -Filter "Name='TPFanControl'"
     if ($null -eq $installed -or -not [string]::Equals($installed.PathName,$expectedImage,[StringComparison]::OrdinalIgnoreCase)) { throw 'Engine service ownership could not be verified.' }
+    Set-OwnedEngineRecovery $appRoot
     Start-Service -Name TPFanControl -ErrorAction Stop
     (Get-Service -Name TPFanControl).WaitForStatus('Running',[TimeSpan]::FromSeconds(20))
 } catch {
