@@ -40,7 +40,7 @@ const headings = {
 const state = { token:null, mode:'live', snapshot:null, history:[], activity:[], view:'overview', minutes:10, busy:false, stale:true, error:null, drafts:new Map(), search:'', stopped:false };
 let toastTimer, refreshPromise;
 async function api(path, body) {
-  const timeout=path==='commands'&&(body?.type?.startsWith('fan-profile')||body?.type==='fan-manual-limit')?90000:45000;
+  const timeout=body?.type==='turbo'?240000:path==='commands'&&(body?.type?.startsWith('fan-profile')||body?.type==='fan-manual-limit')?90000:45000;
   const response = await fetch(`/api/${path}`,{ method:body === undefined ? 'GET' : 'POST',
     headers:{'X-Control-Token':state.token || '',...(body === undefined ? {} : {'Content-Type':'application/json'})},
     body:body === undefined ? undefined : JSON.stringify(body), signal:AbortSignal.timeout(timeout) });
@@ -57,6 +57,10 @@ async function command(value) {
   state.busy = true; state.pendingCommand=value; render();
   try {
     const result = await api('commands',value); state.snapshot = result.snapshot;
+    if(value.type==='turbo'){
+      state.ryzenDrafts?.clear();
+      for(const fan of result.snapshot.fans??[])state.drafts.delete(fan.id);
+    }
     if (value.type === 'ryzen-tune' && value.restore) {
       const restored = result.snapshot?.ryzen?.current?.[value.setting];
       if (Number.isFinite(restored)) {
@@ -181,6 +185,23 @@ function boostPanel(detailed=false) {
       box.append(el('p','step-note',`A previous boost change ${label} could not be fully verified. Restore the saved recovery target before enabling Maximum boost again.`),restore);
     }
   }
+  box.append(help);return box;
+}
+function turboPanel() {
+  const t=state.snapshot.turbo,box=panel('Turbo','power','One action for maximum available performance.',el('span','panel-pill',t?.active?'VERIFIED ACTIVE':t?.recoveryPending?'RESTORE NEEDED':t?.available?'READY':'UNAVAILABLE'));
+  box.classList.add('turbo-panel');
+  const source=t?.source==='dc'?'battery':'AC power';
+  box.append(el('p','big-info',t?.recoveryPending?t.reason:t?.available?`Maximum boost, no CPU speed cap, and Max fan for ${source}. The CPU temperature limit stays unchanged.`:t?.reason||'Waiting for hardware capabilities.'));
+  const enable=button(state.pendingCommand?.type==='turbo'&&state.pendingCommand.action==='enable'?'Enabling Turbo…':'Enable Turbo','button primary',()=>command({type:'turbo',action:'enable'}));
+  enable.disabled=state.busy||state.stale||!t?.available||!!t?.recoveryPending;
+  const restore=button(state.pendingCommand?.type==='turbo'&&state.pendingCommand.action==='restore'?'Restoring…':'Restore previous settings','button',()=>command({type:'turbo',action:'restore'}));
+  restore.disabled=state.busy||state.stale||!t?.recoveryPending;
+  box.append(append(el('div','fan-actions turbo-actions'),enable,restore));
+  const labels={sustainedWatts:'Sustained power',fastWatts:'Burst power',slowWatts:'Average power'};
+  if(t?.targets?.length)box.append(el('p','step-note',t.targets.map(target=>`${labels[target.key]}: ${fmt(target.value,1)} W`).join(' · ')));
+  if(t?.notes?.length)box.append(el('p','step-note',t.notes.join(' ')));
+  const help=el('details','control-help');help.open=!!state.turboHelpOpen;help.addEventListener('toggle',()=>state.turboHelpOpen=help.open);
+  append(help,el('summary','','Turbo behavior and recovery'),el('p','','Only reviewed, writable power limits are raised. Firmware still controls actual clocks and sustained wattage; Turbo cannot guarantee continuous boost. Independent GPU boost is unchanged.'),el('p','','Restore previous settings returns the captured CPU policy, wattages and fan mode. Other tuning controls are locked until restoration; Return to firmware remains available. Closing the window releases manual cooling to firmware, but power settings stay until restored. A restart never enables Turbo automatically; its saved recovery action remains available.'),el('p','','Minimizing keeps manual cooling while its lease and temperature checks pass. If the power source, plan or readings change, Turbo is no longer shown as verified. It does not reapply settings automatically.'));
   box.append(help);return box;
 }
 function stepChoice(mhz,hardware) {
@@ -345,7 +366,7 @@ function fanPanel() {
       const value=state.drafts.get(fan.id)||draft;
       command({type:'fan',id:fan.id,mode:value.mode,...(value.mode==='manual'?(isLevel?{level:value.percent}:{percent:value.percent}):{})});
     }); apply.disabled=select.disabled||draft.mode==='curve';
-    const restore=button('Return to firmware','button',()=>command({type:'fan',id:fan.id,mode:'auto'})); restore.disabled=select.disabled;
+    const restore=button('Return to firmware','button turbo-safe',()=>command({type:'fan',id:fan.id,mode:'auto'})); restore.disabled=select.disabled;
     const fullSpeed=isLevel?button(fan.level===64?'Max active':'Max fan','button',()=>command({type:'fan',id:fan.id,mode:'manual',level:64})):null;
     if(fullSpeed) fullSpeed.disabled=select.disabled||fan.level===64;
     if(fan.level===64) info.append(el('div','metric-detail','Max fan mode: highest, unregulated speed.'));
@@ -471,7 +492,7 @@ function fanSpeedsPanel() {
 function gpuPanels() {
   const boxes=[];
   for (const gpu of state.snapshot.gpus) {
-    const box=panel(gpu.name,'gpu',`${gpu.vendor} graphics`);
+    const box=panel(gpu.name,'gpu',`${gpu.vendor} graphics`);box.classList.add('control-panel');
     const grid=el('div','detail-grid');
     append(grid,metric('GPU temperature','temperature',gpu.temperature,'°C','Core temperature',null,true),metric('GPU utilization','gpu',gpu.load,'%','Graphics load'),metric('Core clock','sensors',gpu.clock,'MHz','Current frequency'));
     const inside=el('div','big-info'); inside.append(grid); box.append(inside);
@@ -569,7 +590,7 @@ function activityPanel() {
   const box=panel('Control history','activity','Requested changes, read-back results and errors · stored locally');
   if (!state.activity.length) box.append(el('div','empty-state','Your control changes will appear here. No settings are applied automatically at startup.'));
   for (const event of state.activity) {
-    const c=event.command, profileTitle=({'fan-profile-save':'Save fan profile','fan-profile-apply':'Apply fan profile','fan-profile-delete':'Delete fan profile','fan-profile-firmware':'Use firmware fan control'})[c.type], title=profileTitle||(c.type==='fan-manual-limit'?('Manual fan cutoff · '+(c.celsius===null?'Laptop default':c.celsius+' °C')):c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`);
+    const c=event.command, profileTitle=({'fan-profile-save':'Save fan profile','fan-profile-apply':'Apply fan profile','fan-profile-delete':'Delete fan profile','fan-profile-firmware':'Use firmware fan control',turbo:c.action==='restore'?'Restore previous Turbo settings':'Enable Turbo'})[c.type], title=profileTitle||(c.type==='fan-manual-limit'?('Manual fan cutoff · '+(c.celsius===null?'Laptop default':c.celsius+' °C')):c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`);
     append(box,append(el('div',`event ${event.status}`),el('span','event-indicator'),append(el('div','event-info'),el('div','event-title',title),el('div','event-detail',`${event.status.toUpperCase()} · ${event.detail||'Awaiting verification'}`)),el('time','',new Date(event.requested_at).toLocaleTimeString())));
   }
   return box;
@@ -589,7 +610,7 @@ function compatibilityPanel() {
 }
 function render(force=false) {
   const s=state.snapshot;
-  const operation=$('#operation-status');operation.hidden=!state.busy&&!state.profileApplying;operation.textContent=state.profileApplying?'Applying fan profile…':state.pendingCommand?.restore?'Restoring baseline…':'Applying changes…';
+  const operation=$('#operation-status');operation.hidden=!state.busy&&!state.profileApplying;operation.textContent=state.profileApplying?'Applying fan profile…':state.pendingCommand?.type==='turbo'?(state.pendingCommand.action==='restore'?'Restoring previous settings…':'Enabling Turbo…'):state.pendingCommand?.restore?'Restoring baseline…':'Applying changes…';
   $('#content').setAttribute('aria-busy',String(!!state.busy||!!state.profileApplying));$('#refresh-button').disabled=!!state.busy;
   $('#mode-badge').textContent=state.mode==='demo'?'SIMULATED DEMO':'LIVE HARDWARE'; $('#mode-badge').classList.toggle('demo',state.mode==='demo');
   $('#connection').replaceChildren(el('span','status-dot'),document.createTextNode(state.error?'Disconnected':state.stale?'Waiting for data':'Connected'));
@@ -605,12 +626,13 @@ function render(force=false) {
   $('#sample-time').textContent=`Last sample ${new Date(s.at).toLocaleTimeString()}${state.stale?' · stale':''}`;
   if (!force && !state.stale && !state.busy && $('#content').contains(document.activeElement) && ['INPUT','SELECT'].includes(document.activeElement.tagName)) return;
   const content=$('#content'), parts=[];
+  if(s.turbo?.recoveryPending&&!['overview','cpu'].includes(state.view))parts.push(turboPanel());
   if (state.view==='overview') {
-    parts.push(metrics(),chart(),append(el('div','controls-grid'),boostPanel(),fanPanel()));
+    parts.push(metrics(),turboPanel(),chart(),append(el('div','controls-grid'),boostPanel(),fanPanel()));
     parts.push(append(el('section','panel device-summary'),append(el('div','device-icon'),icon('cpu')),append(el('div'),el('h3','',s.cpu.name),el('p','',`${fmt(s.cpu.load)}% CPU load · ${clockGhz(s.cpu.clock)} GHz (${clockCaption(s.cpu.clockDetails)}) · ${fmt(s.cpu.power,1)} W package power`)),button('View all sensors →','text-button',()=>navigate('sensors'))));
   } else if(state.view==='cpu') {
     parts.push(append(el('div','detail-grid'),metric('CPU utilization','cpu',s.cpu.load,'%','Total processor load'),metric('CPU speed','sensors',s.cpu.clock,'GHz',clockCaption(s.cpu.clockDetails),undefined,false,clockGhz),metric('Package power','power',s.cpu.power,'W','CPU package power')),
-      stepsPanel(),boostPanel(true),...(showCpuTuning(s)?[advancedCpuTuning()]:[]),chart());
+      turboPanel(),stepsPanel(),boostPanel(true),...(showCpuTuning(s)?[advancedCpuTuning()]:[]),chart());
   } else if(state.view==='gpu') { parts.push(...gpuPanels(),chart()); }
   else if(state.view==='advanced') parts.push(fanSpeedsPanel());
   else if(state.view==='fan') { parts.push(metrics(),fanPanel(),fanProfilesPanel()); }
@@ -618,6 +640,9 @@ function render(force=false) {
   else parts.push(activityPanel(),compatibilityPanel());
   const focusLabel=content.contains(document.activeElement)?document.activeElement.getAttribute('aria-label'):null;
   content.classList.toggle('cpu-page',state.view==='cpu');content.replaceChildren(...parts);
+  if(s.turbo?.recoveryPending)for(const input of content.querySelectorAll('.control-panel input,.control-panel select,.control-panel button,.ryzen-row input,.ryzen-row button')){
+    if(!input.classList.contains('turbo-safe')){input.disabled=true;input.title='Restore previous Turbo settings before changing this control.';}
+  }
   if(focusLabel) content.querySelector(`[aria-label="${CSS.escape(focusLabel)}"]:not(:disabled)`)?.focus();
 }
 function navigate(view) {

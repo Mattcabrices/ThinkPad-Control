@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.29 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.30 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -10,6 +10,11 @@ upstream licenses, credits and matching source archives.
 ## User installation flow
 
 ### Unreleased UX fixes
+
+Alpha.30 adds [Turbo](TURBO.md), coordinating Max fan, CPU boost/speed policy and
+supported Ryzen wattage controls. It captures and verifies restoration, persists
+interruption recovery and leaves thermal limits unchanged. These new paths have
+simulation coverage only; alpha.29 installed results below do not certify Turbo.
 
 The GUI keeps the compact hardware-monitor layout, with aligned numeric readings
 and controls, shorter visible guidance, and expandable boost/fan safety details.
@@ -140,7 +145,7 @@ the actual repository/release links and tested model list are available.
 
 ## Current evidence and remaining decisions
 
-Alpha.29 is the latest locally packaged and installed build. The application code
+Alpha.29 is the latest installed and physically checked build. The application code
 at e5dabd7677d4ce6a5d64430a724aa0a6ddd29277 passed the hosted Windows build,
 197 local scoped application tests, 285 isolated native assertions, and packaged
 Ryzen/Intel GUI simulations. An approved T14s upgrade verified automatic hardware

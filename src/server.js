@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { Store } from './store.js';
 import { DemoProvider, WindowsProvider, validateCommand } from './providers.js';
 import { buildCompatibilityReport } from './compat-report.js';
+import {TurboController} from './turbo.js';
 
 const assets = new Map([
   ['/', ['index.html','text/html; charset=utf-8']],
@@ -16,11 +17,13 @@ const assets = new Map([
   ['/styles.css', ['styles.css','text/css; charset=utf-8']],
   ['/theme.css', ['theme.css','text/css; charset=utf-8']]
 ]);
-export function createApp({ provider, store, interval = 3000, monotonicNow = () => performance.now() } = {}) {
+export function createApp({ provider, store, interval = 3000, monotonicNow = () => performance.now(), turboStateFile = null } = {}) {
   if (!provider || !store) throw new Error('Provider and store are required.');
   const token = randomBytes(32).toString('hex');
   let snapshot = null, lastError = null, lastLease = null, timer, stopping = false, expectedHost, queued = 0, closingPromise;
   let tail = Promise.resolve();
+  const turbo=new TurboController(provider,{file:turboStateFile,leaseAlive:()=>lastLease!==null&&monotonicNow()-lastLease<7500});
+  const readSnapshot=async()=>{const s=await provider.snapshot();return {...s,turbo:turbo.view(s)};};
   const serialized = fn => {
     if (queued >= 32) return Promise.reject(new Error('Hardware command queue is full.'));
     queued++;
@@ -31,7 +34,7 @@ export function createApp({ provider, store, interval = 3000, monotonicNow = () 
   const poll = async () => {
     try {
       await provider.heartbeat(lastLease !== null && monotonicNow() - lastLease < 7500);
-      snapshot = await provider.snapshot();
+      snapshot = await readSnapshot();
       store.sample(snapshot); lastError = null;
     } catch (e) { lastError = e.message; }
   };
@@ -105,7 +108,7 @@ export function createApp({ provider, store, interval = 3000, monotonicNow = () 
             try{const result=await provider.command(c);store.finish(id,'success',result);}
             catch(e){store.finish(id,'error',e.message);throw e;}
           }
-          snapshot=await provider.snapshot();store.sample(snapshot);
+          snapshot=await readSnapshot();store.sample(snapshot);
         });
         return json(res,200,{message:'Firmware control checked for available fan channels.'});
       }
@@ -123,14 +126,20 @@ export function createApp({ provider, store, interval = 3000, monotonicNow = () 
         const result = await serialized(async () => {
           const id = store.begin(command);
           try {
-            const message = await provider.command(command);
+            turbo.guard(command);
+            if(command.type==='turbo'&&command.action==='enable')lastLease=monotonicNow();
+            const message = command.type==='turbo'?await turbo.command(command.action):await provider.command(command);
             lastLease = monotonicNow();
-            snapshot = await provider.snapshot();
+            snapshot = await readSnapshot();
             store.sample(snapshot); lastError = null;
             store.finish(id,'success',message);
             return { message, snapshot };
           } catch(e) {
             let detail=e.message;
+            if(command.type==='turbo'&&command.action==='enable'&&turbo.saved){
+              try{detail+=' '+await turbo.command('restore');}
+              catch(recovery){detail+=` Turbo restoration remains pending: ${recovery.message}`;}
+            }
             if(command.type==='fan') {
               lastLease=null;
               try { await provider.heartbeat(false); }
@@ -184,7 +193,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (!Number.isInteger(port) || (port < 1024 && !(port===0&&desktop)) || port > 65535) throw new Error('PORT must be 1024–65535 (or 0 for desktop mode).');
   const store = new Store(resolve(process.env.THINKPAD_DATA_DIR || 'data',intelDemo ? 'demo-intel.sqlite' : demo ? 'demo.sqlite' : 'thinkpad.sqlite'));
   const builtBridge = resolve('artifacts/bridge/ThinkPad.Bridge.exe');
-  const app = createApp({ provider:demo ? new DemoProvider(intelDemo?'intel':'ryzen') : new WindowsProvider({bridgePath:process.env.THINKPAD_BRIDGE || (existsSync(builtBridge)?builtBridge:undefined),boostStateFile:resolve(process.env.THINKPAD_DATA_DIR || 'data','max-boost-baseline.json'),fanProfileFile:resolve(process.env.THINKPAD_DATA_DIR || 'data','fan-profiles.json')}), store });
+  const app = createApp({ provider:demo ? new DemoProvider(intelDemo?'intel':'ryzen') : new WindowsProvider({bridgePath:process.env.THINKPAD_BRIDGE || (existsSync(builtBridge)?builtBridge:undefined),boostStateFile:resolve(process.env.THINKPAD_DATA_DIR || 'data','max-boost-baseline.json'),fanProfileFile:resolve(process.env.THINKPAD_DATA_DIR || 'data','fan-profiles.json')}), store,
+    turboStateFile:resolve(process.env.THINKPAD_DATA_DIR || 'data',demo?(intelDemo?'turbo-demo-intel.json':'turbo-demo.json'):'turbo-recovery.json') });
   try {
     const url = await app.listen(port);
     if(desktop)console.log('DESKTOP_READY '+JSON.stringify({url,token:app.sessionToken}));

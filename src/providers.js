@@ -9,6 +9,7 @@ import { EcSlotWatch, FanProfiles, engineRows } from './fan-curves.js';
 import { FanLevelSpeeds, FULL_SPEED_LEVEL } from './fan-levels.js';
 import { buildCpuSteps, MIN_STEP_MHZ, MAX_STEP_MHZ, MAX_BOOST, STANDARD_BOOST, isMaxBoost } from './cpu-steps.js';
 import { selectCpuClock } from './cpu-clock.js';
+import {validateTurboPolicy,turboCurveRows} from './turbo.js';
 
 const execute = promisify(execFile);
 // The EC's unregulated mode, above level 7. The engine runs level 7 first until the fan has spun up.
@@ -32,6 +33,7 @@ export function parseNvidia(csv) {
 export function validateCommand(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected a command object.');
   const keys = Object.keys(value);
+  if(value.type==='turbo'&&keys.length===2&&['enable','restore'].includes(value.action))return value;
   if (value.type === 'ryzen-tune' && keys.every(k=>['type','setting','value','restore'].includes(k)) &&
       ['sustainedWatts','fastWatts','slowWatts','temperatureLimit'].includes(value.setting) && typeof value.restore==='boolean' &&
       (value.restore ? value.value===undefined : Number.isFinite(value.value) && value.value >= (value.setting==='temperatureLimit'?60:5) && value.value <= (value.setting==='temperatureLimit'?110:100) && Math.abs(value.value*10-Math.round(value.value*10))<0.001 && (value.setting!=='temperatureLimit'||Number.isInteger(value.value)))) return value;
@@ -86,13 +88,13 @@ export class DemoProvider {
     this.leaseUntil = 0;
   }
   async snapshot() {
-    if (Date.now() > this.leaseUntil) this.fanMode = 'auto';
+    if (Date.now() > this.leaseUntil && this.fanMode==='manual') this.fanMode = 'auto';
     const wave = Math.sin(Date.now() / 14000), t = 58 + wave * 8;
     const snapshot = {
       at: new Date().toISOString(), mode: 'demo', machine: { manufacturer: 'Lenovo', model: 'ThinkPad T14s Gen 2 · simulated' },
       admin: false, powerSource: 'Online',
       cpu: { name: 'AMD Ryzen 5 PRO 5650U · simulated', temperature: t, load: 31 + wave * 14, clock: 2900 + wave * 500, power: 17 + wave * 4 },
-      ryzen:{available:true,reason:'',current:{...this.ryzenLimits},baseline:{...this.ryzenBaseline},status:'Simulated direct tuning',ranges:{sustainedWatts:{min:5,max:25},fastWatts:{min:5,max:40},slowWatts:{min:5,max:30},temperatureLimit:{min:60,max:90}}}, motherboard: { temperature: 42 + wave * 3 }, boost: { ...this.boost },
+      ryzen:{available:true,reason:'',current:{...this.ryzenLimits},baseline:{...this.ryzenBaseline},fields:Object.fromEntries(Object.keys(this.ryzenLimits).map(k=>[k,{available:true,restoreAvailable:true}])),status:'Simulated direct tuning',ranges:{sustainedWatts:{min:5,max:25},fastWatts:{min:5,max:40},slowWatts:{min:5,max:30},temperatureLimit:{min:60,max:90}}}, motherboard: { temperature: 42 + wave * 3 }, boost: { ...this.boost },
       cpuSteps: buildCpuSteps({ cpu: { MaxClockSpeed: 2301 }, performance: { ProcessorFrequency: 2100, PerformanceLimitFlags: 0 }, boost: { ...this.boost }, cpuPolicy: { scheme: 'demo', maxFrequency: { ...this.maxFrequency }, epp: { ...this.epp } } },
         { available: true, reason: '', vendor: 'AuthenticAMD', family: 0x19, source: 'Simulated', cppcEnabled: true, cppc: { highest: 186, nominal: 89, lowestNonlinear: 43, lowest: 16 }, states: [{ label: 'P0', mhz: 2300 }, { label: 'P1', mhz: 1800 }, { label: 'P2', mhz: 1400 }] },
         { scheme: 'demo', ac: 0, dc: 0 }),
@@ -171,8 +173,15 @@ export class DemoProvider {
     }
     return 'Simulated command applied.';
   }
-  async heartbeat(active) { if (active) this.leaseUntil = Date.now() + 10_000; else this.fanMode = 'auto'; }
-  async close() { this.fanMode = 'auto'; }
+  turboBoostRecovery(b){return structuredClone(this.demoBoostBefore[b.source]??null);}
+  async restoreTurboPolicy(b,groups,recovery){
+    validateTurboPolicy(b);
+    if(groups.includes('frequency')){this.maxFrequency[b.source]=b.frequency;if(b.hybrid)this.maxFrequencyClass1[b.source]=b.frequencyClass1;}
+    if(groups.includes('boost')){this.boost[b.source]=b.mode;this.epp[b.source]=b.epp;if(b.hybrid)this.eppClass1[b.source]=b.eppClass1;if(recovery)this.demoBoostBefore[b.source]=recovery;else delete this.demoBoostBefore[b.source];}
+  }
+  async restoreTurboCurve(saved){this.fanCurve={active:2,rows:turboCurveRows(saved),masks:saved.masks};this.fanMode='curve';this.leaseUntil=Date.now()+10000;}
+  async heartbeat(active) { if (active) this.leaseUntil = Date.now() + 10_000; else if(this.fanMode==='manual') this.fanMode = 'auto'; }
+  async close() { if(this.fanMode==='manual')this.fanMode = 'auto'; }
 }
 
 export class WindowsProvider {
@@ -490,6 +499,28 @@ export class WindowsProvider {
       try { await this.bridge.request('fan',{fanId:c.id,mode:'auto'}); recoverySent = true; } catch {}
       throw new Error(`${error.message} ${recoverySent ? 'Firmware recovery requested; inspect engine state.' : 'Firmware recovery could not be sent; inspect hardware and watchdog state.'}`);
     }
+  }
+  turboBoostRecovery(b){return structuredClone(this.readBoostMemory()[b.scheme]?.[b.source]??null);}
+  async restoreTurboPolicy(b,groups,recovery){
+    validateTurboPolicy(b);
+    if((await this.snapshot()).cpuSteps?.policy?.scheme!==b.scheme)throw Error('Return to the original Windows power plan before restoring Turbo policy. The app will not switch plans.');
+    const writes=[];
+    if(groups.includes('frequency')){writes.push(['PROCFREQMAX',b.frequency]);if(b.hybrid)writes.push(['PROCFREQMAX1',b.frequencyClass1]);}
+    if(groups.includes('boost')){writes.push(['PERFBOOSTMODE',b.mode],['PERFEPP',b.epp]);if(b.hybrid)writes.push(['PERFEPP1',b.eppClass1]);}
+    const errors=[];
+    for(const [key,value] of writes)try{await this.run(this.powercfg,[`/set${b.source}valueindex`,b.scheme,'SUB_PROCESSOR',key,String(value)]);}catch(e){errors.push(e.message);}
+    const matches=s=>{const p=s.cpuSteps?.policy;return (!groups.includes('frequency')||p?.[b.source]===b.frequency&&(!b.hybrid||p?.class1?.[b.source]===b.frequencyClass1))&&
+      (!groups.includes('boost')||s.boost?.[b.source]===b.mode&&p?.epp?.[b.source]===b.epp&&(!b.hybrid||p?.eppClass1?.[b.source]===b.eppClass1));};
+    await this.verifyPolicyRollback(b.scheme,s=>s.cpuSteps?.policy?.scheme,matches);
+    if(errors.length)throw Error(errors.join('; '));
+    if(groups.includes('boost')){const memory=this.readBoostMemory(),plan={...memory[b.scheme]};if(recovery)plan[b.source]=recovery;else delete plan[b.source];if(Object.keys(plan).length)memory[b.scheme]=plan;else delete memory[b.scheme];this.writeBoostMemory(memory);}
+  }
+  async restoreTurboCurve(saved){
+    if(!this.bridge)throw Error('Hardware worker is required to restore the fan curve.');
+    this.slotWatch.invalidate();
+    try{await this.bridge.request('fan-curve',{rows:turboCurveRows(saved),masks:saved.masks});}finally{this.slotWatch.invalidate();}
+    const s=await this.snapshot();
+    if(s.fans.find(f=>f.id===saved.id)?.mode!=='curve'||s.fanProfiles.activeId!==saved.profile.id||JSON.stringify(s.fanProfiles.maskedSlots)!==JSON.stringify(saved.masks))throw Error('Previous fan curve read-back did not match.');
   }
   async heartbeat(active) { if (this.bridge?.child) await this.bridge.request('lease', { active }); }
   async close() { this.bridge?.close(); }

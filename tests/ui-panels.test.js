@@ -255,3 +255,15 @@ test('telemetry refresh updates filtered sensor readings while search stays focu
   const textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
   assert.match(textOf(readings.tree),/73\.4/);assert.doesNotMatch(textOf(readings.tree),/GPU core/);assert.equal(state.search,'CPU');assert.equal(renders,1);
 });
+
+test('Turbo panel offers restore after interruption and displays read-only limits without promising more watts',()=>{
+  const state={snapshot:{turbo:{available:true,source:'ac',targets:[{key:'fastWatts',value:40}],notes:['Sustained power: read-only or unavailable.']}},busy:false,stale:false},commands=[];
+  const context=vm.createContext({state,el:(tag,cls,text)=>node(tag,text),panel:()=>node('panel'),append:(p,...children)=>{p.append(...children);return p;},button:(text,cls,action)=>({...node('button',text),action}),fmt:String,command:c=>commands.push(c)});
+  vm.runInContext(source.slice(source.indexOf('function turboPanel()'),source.indexOf('function stepChoice(')),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
+  let nodes=walk(vm.runInContext('turboPanel()',context));assert.equal(nodes.find(n=>n.text==='Enable Turbo').disabled,false);assert.equal(nodes.find(n=>n.text==='Restore previous settings').disabled,true);
+  assert.match(textOf(vm.runInContext('turboPanel()',context)),/Sustained power: read-only/);assert.match(textOf(vm.runInContext('turboPanel()',context)),/temperature limit stays unchanged/);
+  state.snapshot.turbo={available:false,source:'ac',active:false,recoveryPending:true,reason:'Turbo was interrupted.'};nodes=walk(vm.runInContext('turboPanel()',context));
+  assert.equal(nodes.find(n=>n.text==='Enable Turbo').disabled,true);assert.equal(nodes.find(n=>n.text==='Restore previous settings').disabled,false);
+  nodes.find(n=>n.text==='Restore previous settings').action();assert.deepEqual(JSON.parse(JSON.stringify(commands)),[{type:'turbo',action:'restore'}]);
+});

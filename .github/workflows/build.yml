@@ -40,6 +40,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: unsigned-alpha-windows-x64
-          path: artifacts/releases/*0.4.0-alpha.29*.zip
+          path: artifacts/releases/*0.4.0-alpha.30*.zip
           retention-days: 14
 # CI artifacts are development builds. This workflow never publishes a release.

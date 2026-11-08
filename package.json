@@ -1,6 +1,6 @@
 {
   "name": "thinkpad-control",
-  "version": "0.4.0-alpha.29",
+  "version": "0.4.0-alpha.30",
   "license": "MIT",
   "author": "Matt Cabrices",
   "private": true,
@@ -14,6 +14,6 @@
     "build:native": "powershell.exe -NoProfile -File scripts/build-native.ps1",
     "build:desktop": "powershell.exe -NoProfile -File scripts/build-desktop.ps1",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
-    "check": "node --check src/server.js && node --check src/providers.js && node --check src/bridge.js && node --check src/pipe-bridge.js && node --check src/store.js && node --check src/compat-report.js && node --check src/cpu-steps.js && node --check src/cpu-clock.js && node --check public/app.js && node --check public/desktop.js"
+    "check": "node --check src/turbo.js && node --check src/server.js && node --check src/providers.js && node --check src/bridge.js && node --check src/pipe-bridge.js && node --check src/store.js && node --check src/compat-report.js && node --check src/cpu-steps.js && node --check src/cpu-clock.js && node --check public/app.js && node --check public/desktop.js"
   }
 }

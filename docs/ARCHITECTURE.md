@@ -1,5 +1,13 @@
 # ThinkPad Control — MVP architecture
 
+Turbo is coordinated by `src/turbo.js` inside the API's serialized command queue.
+It composes existing provider operations, verifies their combined result, and
+stores an atomic per-data-directory recovery journal before writes. The journal
+preserves pre-Turbo values across API restarts without automatically reapplying
+Turbo. Provider restoration uses fixed policy keys and the captured active plan;
+the elevated worker's capability, lease, thermal and fan-ownership gates remain
+unchanged. See [Turbo behavior and recovery](TURBO.md).
+
 ## Product and scope
 
 A single-user, local-first Windows desktop utility for ThinkPad power users. Primary target: T14s Gen 2 AMD and T14 Gen 3 AMD; support elsewhere is discovered, never inferred from the ThinkPad brand. No cloud account or remote hardware endpoint. The desktop package ships the client in a native WinForms/WebView2 window, with tray controls, isolated renderer profile and bundled Node/.NET runtimes. Developer browser mode remains available.

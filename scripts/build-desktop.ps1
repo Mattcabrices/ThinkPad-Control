@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $version = (Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'package.json') | ConvertFrom-Json).version
 Set-Location -LiteralPath $projectRoot
-foreach ($source in @('public/app.js','public/desktop.js','src/providers.js','src/server.js')) {
+foreach ($source in @('public/app.js','public/desktop.js','src/providers.js','src/server.js','src/turbo.js')) {
   & node --check (Join-Path $projectRoot $source)
   if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax validation failed: $source" }
 }

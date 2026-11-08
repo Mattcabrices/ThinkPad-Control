@@ -323,3 +323,4 @@ pre { padding: 5px 7px; border-radius: var(--radius); background: var(--surface-
 #operation-status {color:var(--accent);margin-left:auto;font-weight:500}
 .control-panel:focus-within {border-color:var(--border)}
 @media(max-width:640px) {.panel-heading:has(.sensor-tools){align-items:flex-start;gap:8px;flex-wrap:wrap}.sensor-tools{width:100%}.sensor-tools .search{flex:1;min-width:0}.profile-top .mode-select{max-width:100%;flex:1}.fan-actions .button{white-space:normal}.tuning-readings{gap:5px 12px}}.boost-section-label {padding:6px var(--pad);margin:0;border-top:1px solid var(--border-soft);background:var(--surface-alt);font-size:var(--text-small);line-height:1.45}
+.turbo-actions {padding:0 var(--pad) 6px}.turbo-panel .panel-pill {white-space:nowrap}.turbo-panel>.step-note {padding:0 var(--pad)}
