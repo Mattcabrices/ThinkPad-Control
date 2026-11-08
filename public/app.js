@@ -40,9 +40,10 @@ const headings = {
 const state = { token:null, mode:'live', snapshot:null, history:[], activity:[], view:'overview', minutes:10, busy:false, stale:true, error:null, drafts:new Map(), search:'', stopped:false };
 let toastTimer, refreshPromise;
 async function api(path, body) {
+  const timeout=path==='commands'&&(body?.type?.startsWith('fan-profile')||body?.type==='fan-manual-limit')?90000:45000;
   const response = await fetch(`/api/${path}`,{ method:body === undefined ? 'GET' : 'POST',
     headers:{'X-Control-Token':state.token || '',...(body === undefined ? {} : {'Content-Type':'application/json'})},
-    body:body === undefined ? undefined : JSON.stringify(body), signal:AbortSignal.timeout(45000) });
+    body:body === undefined ? undefined : JSON.stringify(body), signal:AbortSignal.timeout(timeout) });
   const result = await response.json();
   if (!response.ok) { if(response.status===403&&path!=='session') state.token=null; throw new Error(result.error || 'Request failed.'); }
   return result;
@@ -52,15 +53,24 @@ function toast(message, error = false) {
   toastTimer = setTimeout(() => { box.hidden = true; },error ? 13000 : 6000);
 }
 async function command(value) {
-  if (state.busy || state.stale) return;
+  if (state.busy || state.stale) return null;
   state.busy = true; render();
   try {
     const result = await api('commands',value); state.snapshot = result.snapshot;
+    if (value.type === 'ryzen-tune' && value.restore) {
+      const restored = result.snapshot?.ryzen?.current?.[value.setting];
+      if (Number.isFinite(restored)) {
+        state.ryzenDrafts ||= new Map();
+        state.ryzenDrafts.set(value.setting,String(Number(restored.toFixed(1))));
+      }
+    }
     if (value.type === 'fan') state.drafts.delete(value.id);
     if (value.type === 'fan-manual-limit') state.drafts.delete('manual-temperature');
     if (value.type === 'fan-profile-save' || value.type === 'fan-profile-delete') state.drafts.delete('fan-profile');
-    toast(result.message); state.activity = await api('activity');
-  } catch(e) { toast(e.message,true); }
+    toast(result.message);
+    try { state.activity = await api('activity'); } catch { /* Verified control succeeded; history refresh can retry. */ }
+    return result;
+  } catch(e) { toast(e.message,true); return null; }
   finally { state.busy = false; await refresh(); }
 }
 function switchControl(title, description, value, capability, action) {
@@ -355,15 +365,18 @@ function fanPanel() {
   return box;
 }
 function fanProfilesPanel() {
-  const fp=state.snapshot.fanProfiles, box=panel('Fan curves and profiles','fan',null,el('span','panel-pill',fp?.curveSet?'CURVE ACTIVE':'FIRMWARE CONTROL')); box.classList.add('control-panel','fan-profiles');
+  const fp=state.snapshot.fanProfiles, actual=state.snapshot.fans?.find(f=>f.id==='tpfc/cooling-system')??state.snapshot.fans?.find(f=>f.controlUnit==='level');
+  const running=actual?.mode==='curve';
+  const box=panel('Fan curves and profiles','fan',null,el('span','panel-pill',running?'CURVE ACTIVE':actual?.mode==='manual'?'MANUAL CONTROL':actual?.mode==='auto'?'FIRMWARE CONTROL':'STATE UNAVAILABLE')); box.classList.add('control-panel','fan-profiles');
   if(!fp?.available){ box.append(append(el('div','empty-state'),el('strong','','Fan curves are unavailable'),el('span','',fp?.reason||'Enable hardware access to read this laptop\'s firmware limit.'))); return box; }
-  const limit=fp.limit.celsius, profiles=fp.profiles, disabled=state.busy||state.stale;
+  const limit=fp.limit.celsius, profiles=fp.profiles, disabled=state.busy||state.stale||state.profileApplying;
   const stored=state.drafts.get('fan-profile'), selected=profiles.find(p=>p.id===(stored?.id??fp.activeId))??(stored?.id===null?null:profiles[0]);
   const draft=stored??{id:selected?.id??null,name:selected?.name??'',fanOff:selected?.fanOff??true,levels:[...(selected?.levels??profiles[0]?.levels??[])],maxTemp:selected?.maxTemp??limit};
   draft.maxTemp??=limit;
-  const keep=()=>state.drafts.set('fan-profile',draft);
+  let refreshActions=()=>{};
+  const keep=()=>{state.drafts.set('fan-profile',draft);refreshActions();};
   const current=fp.activeId?profiles.find(p=>p.id===fp.activeId)?.name:null;
-  box.append(el('p','fan-explanation',`${current?`Running "${current}".`:fp.customCurve?'Running a curve that matches no saved profile.':'Firmware is controlling the fan.'} A curve keeps running with the app closed and after a restart.`));
+  box.append(el('p','fan-explanation',`${running?(current?`Running "${current}".`:'Running a curve that differs from the saved profiles.'):actual?.mode==='manual'?'Manual fan control is active. Applying a profile will switch to its curve.':actual?.mode==='auto'?'Firmware currently controls the fan. Apply a profile to activate its curve.':'Current fan mode is unavailable.'} Applied curves keep running with the app closed and after a restart.`));
   box.append(el('p','fan-explanation curve-notice',`Max mode (Level 10) is the fan's highest, unregulated speed. Set its start temperature below or at the firmware thermal limit of ${limit} \u00b0C (${fp.limit.source}). Level 7 must start below Max. Unlike manual mode, the service runs this curve while the window is minimized or closed.`));
   const slotName=slot=>`EC temperature ${slot+1}`;
   if(fp.maskedSlots?.length) box.append(el('p','fan-explanation',`Adjusted for this curve: ${fp.maskedSlots.map(([slot,shift])=>`${slotName(slot)} reads ${shift} °C lower`).join(', ')}, because it stayed flat while the CPU temperature moved. If it heats up, it can still raise the fan, but later.`));
@@ -403,18 +416,28 @@ function fanProfilesPanel() {
   stop.addEventListener('change',()=>{ draft.fanOff=stop.checked; keep(); }); append(stopLabel,stop,el('span','','Let the fan stop below level 1')); box.append(stopLabel);
   const saveDraft=async()=>{
     const edits={name:draft.name.trim(),fanOff:draft.fanOff,levels:[...draft.levels],maxTemp:draft.maxTemp};
-    await command({type:'fan-profile-save',...(draft.id?{id:draft.id}:{}),...edits});
-    if(state.drafts.has('fan-profile'))return null; // A failed save keeps the draft, and its message is already shown.
-    const kept=state.snapshot.fanProfiles.profiles.find(p=>p.name===edits.name);
+    const result=await command({type:'fan-profile-save',...(draft.id?{id:draft.id}:{}),...edits});
+    if(!result)return null;
+    const kept=result.snapshot.fanProfiles.profiles.find(p=>p.name===edits.name);
     if(kept){state.drafts.set('fan-profile',{id:kept.id,...edits});render(true);}
     return kept??null;
   };
   const save=button('Save profile','button',saveDraft);
-  // Apply always means what is on screen, so edits are saved first.
-  const apply=button('Apply','button primary',async()=>{ const saved=await saveDraft(); if(saved)await command({type:'fan-profile-apply',id:saved.id}); }); apply.disabled=disabled;
+  const isUnchanged=()=>selected?.id===draft.id&&selected?.name===draft.name.trim()&&selected?.fanOff===draft.fanOff&&JSON.stringify(selected?.levels)===JSON.stringify(draft.levels)&&(selected?.maxTemp??limit)===draft.maxTemp;
+  const apply=button(state.profileApplying?'Applying…':isUnchanged()?'Apply profile':'Save and apply','button primary',async()=>{
+    if(state.profileApplying||state.busy||state.stale)return;
+    state.profileApplying=true;render(true);
+    try { const saved=isUnchanged()?selected:await saveDraft(); if(saved)await command({type:'fan-profile-apply',id:saved.id}); }
+    finally {state.profileApplying=false;render(true);}
+  }); apply.disabled=disabled;
   const remove=button('Delete','button',()=>command({type:'fan-profile-delete',id:draft.id})); remove.disabled=disabled||!draft.id;
   const firmware=button('Use firmware control','button',()=>command({type:'fan-profile-firmware'})); firmware.disabled=disabled||!fp.curveSet; save.disabled=disabled;
-  append(box,append(el('div','fan-actions'),apply,save,remove,firmware),el('p','fan-explanation','Applying restarts the fan engine for a few seconds, with firmware in control meanwhile. Installer upgrades preserve the active saved curve.'));
+  const progress=el('p','fan-explanation');progress.setAttribute('role','status');
+  refreshActions=()=>{
+    apply.textContent=state.profileApplying?'Applying…':isUnchanged()?'Apply profile':'Save and apply';
+    progress.textContent=state.profileApplying?'Applying profile: handing cooling to firmware, reconnecting the engine, and checking the running curve…':!isUnchanged()?'Edits are not active yet. Save profile stores them; Save and apply also activates them.':'Apply profile activates this saved curve. Firmware controls cooling briefly while the engine reconnects.';
+  };
+  refreshActions();append(box,append(el('div','fan-actions'),apply,save,remove,firmware),progress);
   return box;
 }
 // Optional. Everything else works without it.

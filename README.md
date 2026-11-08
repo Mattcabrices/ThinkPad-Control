@@ -2,7 +2,7 @@
 
 An open-source Windows desktop controller for Intel and Ryzen ThinkPads: CPU/GPU telemetry, measured fan RPM, direct fan levels, AC/battery CPU boost controls and local history. Original code is [MIT licensed](LICENSE).
 
-By **Matt Cabrices**. **0.4.0-alpha.28 is an unsigned development alpha. Hardware support is not yet certified on either target model.** The first targets are T14s Gen 2 AMD and T14 Gen 3 AMD. Other ThinkPads are detected by capability; no universal support claim is made.
+By **Matt Cabrices**. **0.4.0-alpha.29 is an unsigned development alpha. Hardware support is not yet certified on either target model.** The first targets are T14s Gen 2 AMD and T14 Gen 3 AMD. Other ThinkPads are detected by capability; no universal support claim is made.
 
 Alpha.3 adds experimental Intel primary-fan setup, hybrid CPU energy preferences and per-class frequency restoration. Intel hardware validation is pending; see [Intel support and test plan](docs/INTEL-SUPPORT.md).
 
@@ -29,7 +29,7 @@ when needed. See [policy recovery](docs/POLICY-RECOVERY.md).
 
 ## Install
 
-The local build produces `ThinkPad-Control-Setup-0.4.0-alpha.28-x64.exe` and a portable ZIP under `artifacts/releases`. Setup installs under Program Files with Start menu shortcuts and an uninstaller. Node and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to Microsoft's download if it is missing.
+The local build produces `ThinkPad-Control-Setup-0.4.0-alpha.29-x64.exe` and a portable ZIP under `artifacts/releases`. Setup installs under Program Files with Start menu shortcuts and an uninstaller. Node and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to Microsoft's download if it is missing.
 
 The package **includes a source-built TPFanCtrl2 2.5.1 with our documented fan-selector patch** and its signed EC module. Setup installs hardware support automatically and configures its service. If PawnIO is absent, setup downloads its official signed installer and verifies its pinned hash and signature. An existing external TPFanControl service is left untouched and reported as a conflict. Firmware retains automatic cooling until you explicitly choose a manual fan level. Installation and selected controls have been exercised on the two target machines; clean-device installation, recovery and the complete validation matrix remain pending. See [observed results](docs/COMPATIBILITY.md).
 

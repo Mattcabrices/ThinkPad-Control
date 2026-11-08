@@ -7,6 +7,22 @@ const source=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 function component(name,next){return source.slice(source.indexOf(`function ${name}()`),source.indexOf(`function ${next}()`));}
 function node(tag,text){return {tag,text,children:[],classList:{add(){}},append(...children){this.children.push(...children);},setAttribute(){},addEventListener(){}};}
 
+test('successful baseline restore replaces only its textbox draft with firmware read-back; failure keeps edits',async()=>{
+  const snapshot=await new DemoProvider().snapshot();snapshot.ryzen.current.fastWatts=24.7;
+  const state={snapshot,busy:false,stale:false,ryzenDrafts:new Map([['fastWatts','39'],['slowWatts','28']])};
+  let fail=false;
+  const context=vm.createContext({state,Number,Math,Map,api:async path=>{if(path==='commands'&&fail)throw Error('Restore rejected');return path==='commands'?{snapshot,message:'Restored'}:[];},render(){},toast(){},refresh:async()=>{},
+    el:(tag,cls,text)=>node(tag,text),panel:()=>node('panel'),append:(p,...children)=>{p.append(...children);return p;},button:text=>node('button',text),fmt:String});
+  vm.runInContext(source.slice(source.indexOf('async function command('),source.indexOf('function switchControl('))+component('ryzenPanel','fanPanel'),context);
+  await vm.runInContext("command({type:'ryzen-tune',setting:'fastWatts',restore:true})",context);
+  const walk=n=>[n,...n.children.flatMap(walk)];
+  assert.equal(walk(vm.runInContext('ryzenPanel()',context)).filter(n=>n.tag==='input')[1].value,'24.7');
+  assert.equal(state.ryzenDrafts.get('slowWatts'),'28');
+  state.ryzenDrafts.set('fastWatts','37');fail=true;
+  await vm.runInContext("command({type:'ryzen-tune',setting:'fastWatts',restore:true})",context);
+  assert.equal(state.ryzenDrafts.get('fastWatts'),'37');
+});
+
 test('CPU clock presentation shows per-core GHz, honest fallbacks and collapsed details without writing settings',async()=>{
   const snapshot=await new DemoProvider('intel').snapshot();
   const state={snapshot,busy:false,stale:false};
@@ -167,4 +183,27 @@ test('Max fan curve row moves higher steps down and saves the selected threshold
   const draft=state.drafts.get('fan-profile');assert.equal(draft.maxTemp,70);assert.equal(draft.levels[6],69);
   await nodes.find(n=>n.text==='Save profile').action();
   assert.equal(commands[0].maxTemp,70);assert.equal(commands[0].levels[6],69);
+});
+
+test('profile Apply skips redundant saves, saves edits first, and never applies after a failed save',async()=>{
+  const provider=new DemoProvider();await provider.command({type:'fan-profile-apply',id:'default-2'});
+  const state={snapshot:await provider.snapshot(),drafts:new Map(),busy:false,stale:false},commands=[];
+  let fail=false;
+  const make=(tag,text)=>({...node(tag,text),style:{setProperty(){}},events:{},addEventListener(type,fn){this.events[type]=fn;}});
+  const context=vm.createContext({state,Number,Math,JSON,render(){},el:(tag,cls,text)=>make(tag,text),panel:()=>make('panel'),append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},button:(text,cls,action)=>({...make('button',text),action}),fmt:String,command:async c=>{
+    commands.push(c);if(fail)return null;await provider.command(c);state.snapshot=await provider.snapshot();state.drafts.delete('fan-profile');return {snapshot:state.snapshot};
+  }});
+  vm.runInContext(component('fanProfilesPanel','fanSpeedsPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)];let nodes=walk(vm.runInContext('fanProfilesPanel()',context));
+  state.snapshot.fans[0].mode='auto';
+  const firmwareNodes=walk(vm.runInContext('fanProfilesPanel()',context));
+  assert.match(firmwareNodes.map(n=>n.text??'').join(' '),/Firmware currently controls the fan/);
+  assert.doesNotMatch(firmwareNodes.map(n=>n.text??'').join(' '),/Running "Server inactive"/);
+  state.snapshot.fans[0].mode='curve';
+  await nodes.find(n=>n.text==='Apply profile').action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-apply']);
+  commands.length=0;nodes=walk(vm.runInContext('fanProfilesPanel()',context));const apply=nodes.find(n=>n.text==='Apply profile');
+  const slider=nodes.filter(n=>n.type==='range')[7];slider.value='84';slider.events.input();
+  assert.equal(apply.textContent,'Save and apply');await apply.action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-save','fan-profile-apply']);
+  commands.length=0;nodes=walk(vm.runInContext('fanProfilesPanel()',context));const edited=nodes.filter(n=>n.type==='range')[7];edited.value='83';edited.events.input();fail=true;
+  await nodes.find(n=>n.text==='Apply profile').action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-save']);assert.equal(state.profileApplying,false);
 });

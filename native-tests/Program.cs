@@ -72,10 +72,12 @@ Check(view.ReadInt32(4)==1&&adapter.OwnsManual,"Command sequence increments and 
 Reject(()=>adapter.Send("manual",5),"Do not overwrite a pending external engine command.");
 Publish(3,4);
 Check(adapter.Read().RawLevel==4,"Read-back must preserve actual EC level.");
+Check(System.Text.Json.JsonSerializer.SerializeToElement(adapter.FanSnapshot()).GetProperty("manualOwned").GetBoolean(),"Fan read-back exposes manual ownership separately from the reported mode.");
 adapter.Renew(false);
 Check(view.ReadInt32(88)==1,"Browser disconnect requests BIOS mode.");
 Check(adapter.OwnsManual,"Keep restoration ownership until firmware ack and read-back.");
 Publish(1,128);adapter.Watchdog();Check(!adapter.OwnsManual,"Release ownership after verified BIOS restoration.");
+Check(!System.Text.Json.JsonSerializer.SerializeToElement(adapter.FanSnapshot()).GetProperty("manualOwned").GetBoolean(),"Firmware acknowledgement clears published manual ownership.");
 view.Write(40,91);Publish(1,128);
 Reject(()=>adapter.Send("manual",3),"Unsafe EC temperature must refuse manual mode.");
 view.Write(40,55);Publish(1,128);adapter.Send("manual",3);Publish(3,3);

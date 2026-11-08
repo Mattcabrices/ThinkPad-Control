@@ -9,6 +9,33 @@ import { EcSlotWatch, FanProfiles, defaultProfiles, engineRows, firmwareThermalL
 const ryzen = limit => ({ ryzen: { available: true, current: { temperatureLimit: limit }, baseline: { temperatureLimit: limit } } });
 const levels = [55, 61, 66, 71, 76, 81, 85];
 
+test('applying a profile releases manual ownership and waits for acknowledgement before reconfiguration',async()=>{
+  const provider=new WindowsProvider({platform:'win32',runner:async()=> '{}'}),calls=[];
+  let mode='manual',owned=true,polls=0;const curve={active:2,rows:engineRows(levels,true,86),masks:[]};
+  provider.bridge={request:async(op,args)=>{
+    calls.push(op);
+    if(op==='fan'){assert.equal(args.mode,'auto');mode='auto';return {};}
+    if(op==='lease')return {};
+    if(op==='fan-curve'){assert.equal(owned,false);assert.ok(polls>=2);curve.rows=args.rows;curve.masks=args.masks;mode='curve';return 'applied';}
+    assert.equal(op,'snapshot');if(mode==='auto'&&++polls>=2)owned=false;
+    return {...ryzen(86),fanCurve:curve,fans:[{id:'tpfc/cooling-system',controlUnit:'level',mode,manualOwned:owned,capability:{available:true}}],sensors:[]};
+  }};
+  await provider.command({type:'fan-profile-apply',id:'default-2'});
+  assert.ok(calls.indexOf('fan')<calls.indexOf('fan-curve'));assert.equal(mode,'curve');
+});
+
+test('an unverified manual release never proceeds to profile configuration',async()=>{
+  let clock=0,writes=0;const provider=new WindowsProvider({platform:'win32',runner:async()=> '{}',monotonicNow:()=>clock+=17000});
+  let mode='manual';
+  provider.bridge={request:async(op,args)=>{
+    if(op==='fan'){mode='auto';return {};}
+    if(op==='lease')return {};
+    if(op==='fan-curve'){writes++;throw Error('Must not configure');}
+    return {...ryzen(86),fanCurve:{active:1,rows:[[0,128]]},fans:[{id:'tpfc/cooling-system',controlUnit:'level',mode,manualOwned:true,capability:{available:true}}],sensors:[]};
+  }};
+  await assert.rejects(provider.command({type:'fan-profile-apply',id:'default-2'}),/read-back mismatch/);assert.equal(writes,0);
+});
+
 test('manual fan cutoff defaults to each laptop target and custom policy survives curve changes',async()=>{
   const profiles=new FanProfiles();
   assert.equal(profiles.view(ryzen(86),{active:1,rows:[[0,128]],manualTemperatureLimit:78}).manualTemperature.celsius,86);

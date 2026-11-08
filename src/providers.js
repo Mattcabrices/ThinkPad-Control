@@ -134,7 +134,10 @@ export class DemoProvider {
       this.fanCurve.manualTemperatureLimit=c.celsius??(await this.snapshot()).fanProfiles.manualTemperature.defaultCelsius;
       return 'Manual fan temperature limit saved. It does not change CPU thermal limits or fan curves.';
     }
-    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{this.fanCurve=rows?{...this.fanCurve,active:2,rows,masks,dormantMasks:[]}:{...this.fanCurve,active:1,rows:[[0,128]],masks:[],dormantMasks:this.fanCurve.active===2?(this.fanCurve.masks??[]):(this.fanCurve.dormantMasks??[])};},()=>this.snapshot());
+    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{
+      this.fanMode=rows?'curve':'auto';
+      this.fanCurve=rows?{...this.fanCurve,active:2,rows,masks,dormantMasks:[]}:{...this.fanCurve,active:1,rows:[[0,128]],masks:[],dormantMasks:this.fanCurve.active===2?(this.fanCurve.masks??[]):(this.fanCurve.dormantMasks??[])};
+    },()=>this.snapshot());
     if (c.type === 'ryzen-tune') {
       if(this.profile==='intel')throw new Error('Ryzen controls do not apply to Intel.');
       if (!c.restore && c.value > ({sustainedWatts:25,fastWatts:40,slowWatts:30,temperatureLimit:90})[c.setting]) throw new Error('This value is above the range for this machine.');
@@ -348,6 +351,18 @@ export class WindowsProvider {
   }
   async command(c) {
     let state = await this.snapshot(); // Always authorize against a fresh hardware inventory.
+    if(c.type==='fan-profile-apply'||c.type==='fan-profile-firmware') {
+      if(!state.fanProfiles?.available)throw new Error(state.fanProfiles?.reason||'Fan curves are unavailable.');
+      if(c.type==='fan-profile-apply') {
+        const profile=this.fanProfiles.find(c.id,state.fanProfiles.limit?.celsius??null);
+        if(!profile.valid)throw new Error(`Edit this profile first: ${profile.problem}`);
+      }
+      const primary=state.fans.find(f=>f.id==='tpfc/cooling-system');
+      if(primary?.mode==='manual'||primary?.manualOwned===true) {
+        await this.command({type:'fan',id:primary.id,mode:'auto'});
+        state=await this.snapshot();
+      }
+    }
     if(c.type==='fan-manual-limit') {
       await this.setManualFanLimit(c.celsius,state);
       return 'Manual fan temperature limit saved and verified. CPU thermal limits and fan curves are unchanged.';
@@ -463,7 +478,7 @@ export class WindowsProvider {
         await this.bridge.request('lease',{active:true});
         const after = await this.bridge.request('snapshot');
         const actual = after.fans.find(f => f.id === c.id);
-        verified = actual?.mode === c.mode && (c.mode === 'auto' || (c.level !== undefined ? actual.level === c.level : Math.abs(actual.percent - c.percent) <= 1));
+        verified = actual?.mode === c.mode && (c.mode === 'auto' ? actual.manualOwned!==true : (c.level !== undefined ? actual.level === c.level : Math.abs(actual.percent - c.percent) <= 1));
         if (verified || this.monotonicNow() >= deadline) break;
         await new Promise(resolve => setTimeout(resolve,500));
       } while (true);

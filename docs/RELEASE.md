@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.28 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.29 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -8,6 +8,21 @@ under notices/fan-engine), BIOS-mode configuration, signed LpcACPIEC module,
 upstream licenses, credits and matching source archives.
 
 ## User installation flow
+
+### Unreleased UX fixes
+
+Successful Ryzen baseline restores replace the corresponding input with the
+verified firmware read-back. Baselines come from the laptop when the hardware
+worker connects; they are not hardcoded factory wattages. Failed restores retain
+the edit, and other inputs keep their unsaved values.
+
+Applying a fan profile now verifies release of manual ownership before changing
+the engine configuration. Unedited profiles apply directly; edited profiles use
+Save and apply. Failed saves never proceed to activation. Applying progress spans
+the full operation, and the display distinguishes actual firmware/manual control
+from a stored curve. Saving alone does not activate a curve. These changes require
+the matching updated worker and UI in a future package; alpha.28 remains installed
+until a separate upgrade is requested.
 
 Alpha.27 adds a configurable manual fan temperature cutoff, defaulting to the
 reported Ryzen firmware limit or Intel thermal target (85 C fallback if unknown).

@@ -113,6 +113,7 @@ internal sealed class TpfcAdapter : IDisposable
             mode=!s.Fresh?"unknown":s.Mode is 1 or 2 && s.RawLevel==128?"auto":s.Mode==3 && s.RawLevel is >=0 and <=7 or FullSpeedLevel?"manual":s.Mode==2 && s.RawLevel is >=0 and <=7 or FullSpeedLevel?"curve":"unknown",
             level=s.Fresh && s.RawLevel is >=1 and <=7 or FullSpeedLevel?(int?)s.RawLevel:null,percent=(float?)null,
             controlUnit="level",min=1,max=7,
+            manualOwned=OwnsManual,
             capability=new { available=s.Fresh,reason=s.Fresh?"":"TPFanCtrl2 engine has stopped publishing. Current cooling state is unverified." }
         };
     }
