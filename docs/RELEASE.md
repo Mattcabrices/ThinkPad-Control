@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.22 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.24 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -60,12 +60,12 @@ pending. See [policy recovery](POLICY-RECOVERY.md).
 | Pinned engine, module, hashes and source archives | Implemented |
 | Program Files installer and service ownership checks | Installation exercised on both target machines; owned-service upgrade exercised on T14s; clean-device/uninstall matrix pending |
 | Driver hash and trusted signature verification | Implemented; elevated device access works on both targets; fresh-driver install/reboot matrix pending |
-| Windows build CI and source archive | Added; first hosted CI run pending |
+| Windows build CI and source archive | Verified: [alpha.23 hosted build](https://github.com/Mattcabrices/ThinkPad-Control/actions/runs/42442764365) passed; portable and source archives verified locally |
 | Pinned dependency license/source review | Recorded; matching sources and licenses included; recheck before final signed release |
 | Trusted signing integration | Implemented; account/identity and end-to-end signed release pending |
 | T14s Gen 2 Ryzen 5 telemetry and physical fan validation | Selected controls and telemetry exercised on hardware; audible zero-RPM correlation and full matrix pending |
 | T14 Gen 3 Ryzen 5 telemetry and physical fan validation | Alpha.1 results recorded; alpha.2 retest and full matrix pending |
-| Clean install, upgrade, uninstall, sleep/resume and crash recovery | Pending |
+| Clean install, upgrade, uninstall, sleep/resume and crash recovery | Alpha.22/23 curve-preserving upgrades verified on T14s; remaining clean-device, independent uninstall and recovery matrix pending |
 
 See the isolated test suite for the latest automated checks and the boundary between isolated tests and physical validation. The current installer remains unsigned; package integrity checks do not establish trusted signing.
 
@@ -80,8 +80,8 @@ The engine is signed before worker compilation so the final engine hash is baked
 into the worker; upstream provenance hashes remain separate. Payloads, scripts,
 installer, temporary setup copies and uninstaller are covered by the signed-build
 path. Local preflight and refusal tests pass, but no signing identity/account is
-provisioned and no cloud signing request has been submitted. End-to-end trusted
-signing, hosted CI and clean-device policy acceptance remain pending.
+provisioned and no cloud signing request has been submitted. Hosted unsigned CI is verified. End-to-end trusted
+signing and clean-device policy acceptance remain pending.
 
 Dependency review now includes the four MPL source archives, Mono's full official
 license, and matching LGPL source versions for all embedded sensor modules. See
@@ -92,6 +92,12 @@ tools, build outputs, telemetry and private keys. Generate SHA256 checksums only
 after all signing and packaging. Publish source, installer, portable ZIP and
 checksums together as a GitHub prerelease. Publish no Reddit announcement until
 the actual repository/release links and tested model list are available.
+
+## Current evidence and remaining decisions
+
+The public source is [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control). Alpha.23 adds configurable Max fan-curve thresholds and native background manual-fan renewal. Focused API/UI tests and a native desktop simulation pass. Installed payload hashes and automatic hardware reconnection were verified on the T14s, with the saved curve and CPU settings preserved. On the T14s on AC, a normal executable reopen followed by minimizing retained manual level 7 for a timed 12 seconds at about 3,800 RPM; closing returned the EC to firmware control and the original saved curve was restored. A separate direct hidden-window restoration path exposed a renewal issue. Alpha.24 adds a visibility hook and a passing native regression covering minimize, close, direct restore and renewed manual control. Longer sessions, other devices and suspend/crash behavior remain unverified.
+
+No public binary release or Reddit announcement has been published. Signing identity, clean-device policy acceptance, physical suspend/crash recovery and validation on Intel and additional Ryzen devices remain release gates. A development prerelease must clearly retain the unsigned, experimental status; it must not be labelled production-ready.
 
 ## Announcement draft
 

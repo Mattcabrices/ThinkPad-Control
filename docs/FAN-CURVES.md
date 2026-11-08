@@ -55,6 +55,10 @@ The manual button stays under the same protections as other manual levels: a 10-
 
 There's no level 8 or 9. The controller has no steps between level 7 and this mode. Switching between the two was tried, and it swung between 3000 and 4900 RPM with an audible surge.
 
+## Minimize, close and restore validation
+
+Alpha.23 was checked on the T14s Gen 2 on AC using regulated level 7. A normal executable reopen and 12 seconds minimized retained manual control at about 3,800 RPM. Closing returned the EC to firmware control, then the saved curve was restored. A direct hidden-window restoration path could leave renewal disabled after an earlier close. Alpha.24 reenables renewal when the window becomes visible and adds a native demo regression for that restoration path. This does not certify long sessions, suspend/resume or crash recovery.
+
 ## Known limits
 
 Sensor learning starts fresh when the app opens, after an engine configuration

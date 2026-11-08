@@ -62,6 +62,7 @@ internal sealed class MainWindow : Form
         Shown+=async(_,_)=>await Initialize();
         FormClosing+=(_,e)=>{if(!quitting){e.Cancel=true;manualLeaseEnabled=false;Hide();_ = ReleaseOnHide();}};
         Resize+=(_,_)=>{if(WindowState==FormWindowState.Minimized)Hide();};
+        VisibleChanged+=(_,_)=>{if(Visible&&!quitting)manualLeaseEnabled=true;};
         // Native timer keeps manual cooling alive even when WebView timers are throttled.
         fanLeaseTimer.Tick+=async(_,_)=>{
             if(leaseTickBusy||quitting||busy||!manualLeaseEnabled||backend.Url is null)return;
@@ -167,7 +168,12 @@ internal sealed class MainWindow : Form
                             if(await backend.FirstFanMode()!="manual")throw new InvalidOperationException("Minimizing lost the simulated manual fan lease.");
                             Close();await ReleaseOnHide();await Task.Delay(3500);
                             if(await backend.FirstFanMode()!="auto")throw new InvalidOperationException("Closing did not release simulated manual fan control.");
-                            SmokeTrace("minimize-kept-manual-close-released");await FinishSmoke(true,checks:checks.Clone());
+                            // Windows can restore the hidden form without calling our tray handler.
+                            Show();WindowState=FormWindowState.Normal;
+                            await backend.Post("/api/commands",new {type="fan",id="demo-cooling",mode="manual",level=4});
+                            WindowState=FormWindowState.Minimized;await Task.Delay(11000);
+                            if(await backend.FirstFanMode()!="manual")throw new InvalidOperationException("Restoring the closed window did not resume manual fan renewal.");
+                            SmokeTrace("minimize-kept-manual-close-released-reopen-renewed");await FinishSmoke(true,checks:checks.Clone());
                         }
                         break;
                     }

@@ -1,7 +1,8 @@
 # Security
 
 Report exploitable issues through the repository's private security advisory
-channel once the public repository is created. Do not include serial numbers,
+channel when available. If private reporting is unavailable, open an issue asking
+for a private contact method without publishing the exploit details. Do not include serial numbers,
 personal paths, credentials or telemetry databases in public issues.
 
 The UI and localhost API run without elevation. Hardware commands use an
