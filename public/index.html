@@ -14,7 +14,7 @@
     <div class="sidebar-bottom">
       <button id="setup-button" class="setup-button">Setup</button>
       <div class="author">by Matt Cabrices</div>
-      <div class="version">THINKPAD CONTROL <span>v0.4.0-alpha.25</span></div>
+      <div class="version">THINKPAD CONTROL <span>v0.4.0-alpha.26</span></div>
     </div>
   </aside>
   <div class="workspace">
@@ -31,6 +31,3 @@ npm start</pre></li><li>Open the printed local URL. Run the launcher from an ele
 npm start</pre><p>The GUI provides direct levels 1–7, a firmware-return button and measured RPM for available fans. This integration requires the compatible engine; it does not install an EC driver. A 10-second lease and 85°C watchdog request firmware control when needed. Actual restoration depends on a working engine and driver.</p><p>For other LHM fan controls, explicitly allowlist their detected sensor IDs in <code>THINKPAD_FAN_ALLOWLIST</code>. A tachometer alone does not guarantee control. Your Ryzen Radeon GPU may share CPU power and cooling; independent Radeon boost is unavailable in this MVP.</p><p>If PawnIO access shows error 5, stop this service and use <strong>Launch ThinkPad Control as Administrator.cmd</strong>. Windows will ask you to approve elevation.</p><p id="driver-status"></p></div><button id="setup-done" class="button primary">Got it</button> <button id="stop-service" class="button">Stop local service</button></dialog>
 </body>
 </html>
-
-
-

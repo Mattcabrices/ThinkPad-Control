@@ -164,7 +164,10 @@ export class FanProfiles {
     const maskedSlots = engine?.masks ?? [];
     // Lack of evidence never revokes a configured adjustment. Only measurements
     // from a settled epoch showing real movement can recommend its removal.
-    const recommended = new Map(maskedSlots.filter(([slot]) => !movingSlots.includes(slot)));
+    // Firmware leaves raw readings untouched. Valid dormant offsets came from
+    // this engine's protected INI, and are restored only on an explicit Apply.
+    const dormant = !curveSet && Array.isArray(engine?.dormantMasks) ? engine.dormantMasks.filter(m => Array.isArray(m) && m.length===2 && Number.isInteger(m[0]) && m[0]>=1 && m[0]<=11 && Number.isInteger(m[1]) && m[1]>=1 && m[1]<=70) : [];
+    const recommended = new Map([...dormant,...maskedSlots].filter(([slot]) => !movingSlots.includes(slot)));
     for (const flat of flatSlots) recommended.set(flat.slot,flat.shift);
     const recommendedMasks = sortedMasks([...recommended]);
     const removedSlots = maskedSlots.filter(([slot]) => movingSlots.includes(slot)).map(([slot])=>slot);

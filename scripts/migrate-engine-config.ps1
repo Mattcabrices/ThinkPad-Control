@@ -12,8 +12,22 @@ function Merge-FanConfiguration([string]$Template,[string]$Previous) {
     $modes=[regex]::Matches($Previous,'(?m)^Active=([^\r\n]*)\r?$')
     if($modes.Count -ne 1 -or $modes[0].Groups[1].Value.Trim() -notmatch '^[12]$'){throw 'Existing fan mode is invalid or manual. Return to firmware or a saved curve before upgrading.'}
     $mode=$modes[0].Groups[1].Value.Trim()
-    # Firmware mode uses the new firmware defaults, including no sensor adjustments.
-    if($mode -eq '1'){return $Template}
+    # Firmware retains only validated inert restoration metadata; active offsets
+    # and all operating settings still come from the new firmware defaults.
+    if($mode -eq '1'){
+        $dormant=[regex]::Matches($Previous,'(?m)^// ThinkPadControlDormantAdjustment([^=\r\n]*)=([^\r\n]*)\r?$')
+        if($dormant.Count -gt 6){throw 'Too many dormant sensor adjustments.'}
+        $seen=@{};$saved=@()
+        foreach($offset in $dormant){
+            $slotText=$offset.Groups[1].Value;$shiftText=$offset.Groups[2].Value.Trim()
+            if($slotText -notmatch '^\d{1,2}$' -or $shiftText -notmatch '^\d{1,2}$'){throw 'Dormant sensor adjustment is malformed.'}
+            $slot=[int]$slotText;$shift=[int]$shiftText
+            if($slot -lt 2 -or $slot -gt 12 -or $shift -lt 1 -or $shift -gt 70 -or $seen.ContainsKey($slot)){throw 'Dormant sensor adjustment is outside supported ranges or duplicated.'}
+            $seen[$slot]=$true;$saved+=,"// ThinkPadControlDormantAdjustment$slot=$shift"
+        }
+        if(!$saved.Count){return $Template}
+        return $Template.TrimEnd("`r","`n")+"`r`n"+($saved -join "`r`n")+"`r`n"
+    }
     $levels=[regex]::Matches($Previous,'(?m)^Level=([^\r\n]*)\r?$')
     if($levels.Count -lt 2 -or $levels.Count -gt 16){throw 'Existing curve row count is invalid.'}
     $rows=@();$lastTemp=-1;$lastLevel=-1

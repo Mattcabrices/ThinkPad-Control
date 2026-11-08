@@ -130,7 +130,12 @@ var firmwareIni=FanCurveConfig.Rewrite(curvedIni,null);Check(firmwareIni==curveI
 var maskedIni=FanCurveConfig.Rewrite(curveIni,curveRows,[[10,30]]);var parsedMasks=FanCurveConfig.Parse(maskedIni)!;
 Check(maskedIni.Contains("SensorOffset11=30 -128 127\r\n")&&parsedMasks.Masks.Length==1&&parsedMasks.Masks[0][0]==10&&parsedMasks.Masks[0][1]==30&&!maskedIni.Contains("//SensorOffset"),"A flat slot adjustment uses the engine's one-based name and a range that avoids a second subtraction.");
 Check(FanCurveConfig.Parse(FanCurveConfig.Rewrite(maskedIni,curveRows))!.Masks.Length==0,"Applying without an adjustment removes the earlier one.");
-Check(FanCurveConfig.Rewrite(maskedIni,null)==curveIni,"Returning to firmware removes adjustments and restores the installed default exactly.");
+var dormantIni=FanCurveConfig.Rewrite(maskedIni,null);var dormantCurve=FanCurveConfig.Parse(dormantIni)!;
+Check(dormantCurve.Active==1&&dormantCurve.Masks.Length==0&&dormantCurve.DormantMasks.Length==1&&dormantCurve.DormantMasks[0].SequenceEqual(new[]{10,30})&&!dormantIni.Contains("SensorOffset11="),"Firmware has raw readings and retains the prior offset only as an inert comment.");
+Check(FanCurveConfig.Rewrite(dormantIni,null)==dormantIni,"Repeated firmware selection preserves dormant offsets.");
+var restoredOffsets=FanCurveConfig.Parse(FanCurveConfig.Rewrite(dormantIni,curveRows,dormantCurve.DormantMasks))!;
+Check(restoredOffsets.Masks[0].SequenceEqual(new[]{10,30})&&restoredOffsets.DormantMasks.Length==0,"Explicit curve restore reinstates offsets and clears dormant metadata.");
+Check(FanCurveConfig.Rewrite(curveIni+"// ThinkPadControlDormantAdjustment999999999999999999999=30\r\n",null)==curveIni,"Malformed dormant metadata cannot block firmware cooling.");
 Reject(()=>FanCurveConfig.Rewrite(curveIni,curveRows,[[0,30]]),"The reference CPU slot is never adjusted.");
 Reject(()=>FanCurveConfig.Rewrite(curveIni,curveRows,[[10,71]]),"An adjustment can't exceed the permitted amount.");
 Reject(()=>FanCurveConfig.Rewrite(curveIni,curveRows,[[10,30],[10,20]]),"A slot can't be adjusted twice.");

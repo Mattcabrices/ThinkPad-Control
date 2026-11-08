@@ -1,6 +1,6 @@
 # Public release preparation
 
-0.4.0-alpha.25 is an **unsigned development alpha**, not a claim of universal
+0.4.0-alpha.26 is an **unsigned development alpha**, not a claim of universal
 ThinkPad support. Original code is MIT. The package now includes the pinned
 TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
 fan-selector patch (original and modified sources, patch and build lock ship
@@ -8,6 +8,14 @@ under notices/fan-engine), BIOS-mode configuration, signed LpcACPIEC module,
 upstream licenses, credits and matching source archives.
 
 ## User installation flow
+
+Returning from a saved curve to firmware removes active sensor corrections but
+retains the earlier valid offsets as inert comments in the same protected engine
+configuration. Applying a curve restores those offsets only when fresh settled
+sensor movement has not revoked them. Read-back checks both the curve and its
+offsets. Firmware readings remain unadjusted; this metadata does not control the
+fan in firmware mode. Alpha.25 could forget offsets on this round-trip; alpha.26
+contains the fix and requires its own installed validation.
 
 The installer requests administrator approval and installs under Program Files.
 Setup always installs hardware support. It registers the on-demand hardware worker task and downloads the official PawnIO
@@ -138,4 +146,3 @@ Isolated transaction tests cover rejected ownership, initial read failure,
 idempotence, ignored/partial writes, rollback failure and lost ownership. These
 tests do not certify live engine crash recovery: an approved installed upgrade
 and a separate controlled hardware test are still required.
-

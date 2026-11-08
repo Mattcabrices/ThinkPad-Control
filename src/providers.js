@@ -70,8 +70,10 @@ async function fanProfileCommand(profiles, c, state, applyRows, refresh) {
   }
   const profile = profiles.find(c.id, limit);
   if (!profile.valid) throw new Error(`Edit this profile first: ${profile.problem}`);
-  await applyRows(engineRows(profile.levels, profile.fanOff, limit, profile.maxTemp), view.recommendedMasks);
-  if ((await refresh()).fanProfiles?.activeId !== profile.id) throw new Error('Fan engine read-back mismatch.');
+  const masks=view.recommendedMasks??[];
+  await applyRows(engineRows(profile.levels, profile.fanOff, limit, profile.maxTemp), masks);
+  const observed=(await refresh()).fanProfiles;
+  if (observed?.activeId !== profile.id || JSON.stringify(observed.maskedSlots??[])!==JSON.stringify(masks)) throw new Error('Fan engine curve or sensor-offset read-back mismatch.');
   return `Fan profile "${profile.name}" applied and verified. It keeps running with the app closed and after a restart.`;
 }
 export class DemoProvider {
@@ -125,7 +127,7 @@ export class DemoProvider {
     return snapshot;
   }
   async command(c) {
-    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{this.fanCurve=rows?{active:2,rows,masks}:{active:1,rows:[[0,128]],masks:[]};},()=>this.snapshot());
+    if (c.type.startsWith('fan-profile')) return await fanProfileCommand(this.fanProfiles,c,await this.snapshot(),async (rows,masks)=>{this.fanCurve=rows?{active:2,rows,masks,dormantMasks:[]}:{active:1,rows:[[0,128]],masks:[],dormantMasks:this.fanCurve.active===2?(this.fanCurve.masks??[]):(this.fanCurve.dormantMasks??[])};},()=>this.snapshot());
     if (c.type === 'ryzen-tune') {
       if(this.profile==='intel')throw new Error('Ryzen controls do not apply to Intel.');
       if (!c.restore && c.value > ({sustainedWatts:25,fastWatts:40,slowWatts:30,temperatureLimit:90})[c.setting]) throw new Error('This value is above the range for this machine.');

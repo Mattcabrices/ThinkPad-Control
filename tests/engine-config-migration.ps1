@@ -10,6 +10,12 @@ $merged=Merge-FanConfiguration $template $previous
 foreach($expected in @('Active=2','Level=40 0 0 0','Level=45 1 0 0','Level=78 7 0 0','Level=86 64 0 0','SensorOffset11=30 -128 127','PortBackend=pawnio','Hotkeys=0','ManModeExit=78','Level2=0 128 0 0','NewSafetyDefault=1')){Check ($merged.Contains($expected)) "Missing setting: $expected"}
 Check (!$merged.Contains('ArbitraryPath')) 'Unexpected path migrated.'
 Check ((Merge-FanConfiguration $template ($previous.Replace('Active=2','Active=1'))) -ceq $template) 'Firmware mode retained curve/masks.'
+$dormantPrevious=$template+"// ThinkPadControlDormantAdjustment11=30`r`n"
+$dormantMerged=Merge-FanConfiguration $template $dormantPrevious
+Check ($dormantMerged.Contains('// ThinkPadControlDormantAdjustment11=30')) 'Dormant offset was lost during upgrade.'
+Check ($dormantMerged -notmatch '(?m)^SensorOffset') 'Firmware upgrade activated a dormant offset.'
+Check ((Merge-FanConfiguration $template $dormantMerged) -ceq $dormantMerged) 'Dormant offset migration is not idempotent.'
+foreach($invalidDormant in @($dormantPrevious.Replace('Adjustment11=30','Adjustment1=30'),$dormantPrevious.Replace('Adjustment11=30','Adjustment11=71'),($dormantPrevious+"// ThinkPadControlDormantAdjustment11=20`r`n"),$dormantPrevious.Replace('Adjustment11=30','Adjustment11=30 command'))){Reject {Merge-FanConfiguration $template $invalidDormant}}
 foreach($invalid in @(
     $previous.Replace('Active=2','Active=3'),
     ($previous+"Active=2`n"),

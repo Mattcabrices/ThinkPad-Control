@@ -9,6 +9,7 @@ internal static class FanCurveConfig
     private static readonly Regex ActiveLine=new(@"^Active=\d[ \t]*\r?$",RegexOptions.Multiline);
     private static readonly Regex LevelLine=new(@"^Level=.*(?:\r?\n|$)",RegexOptions.Multiline);
     private static readonly Regex OffsetLine=new(@"^SensorOffset(\d+)=.*(?:\r?\n|$)",RegexOptions.Multiline);
+    private static readonly Regex DormantOffsetLine=new(@"^// ThinkPadControlDormantAdjustment(\d+)=.*(?:\r?\n|$)",RegexOptions.Multiline);
     private static string IniPath=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ThinkPad Control","engine","TPFanControl.ini");
 
     // Checked here as well as in the app: callers supply only numbers, and the top must be maximum fan speed.
@@ -29,12 +30,17 @@ internal static class FanCurveConfig
         foreach(var mask in masks)if(mask.Length!=2||mask[0] is <1 or >11||mask[1] is <1 or >70)throw new InvalidOperationException("A sensor adjustment is outside the permitted range.");
         if(masks.Select(m=>m[0]).Distinct().Count()!=masks.Length)throw new InvalidOperationException("A sensor can only be adjusted once.");
     }
-    // null rows select firmware control: the installed default, with no adjustments.
+    // Firmware has no active adjustments. Keep the earlier valid offsets only as
+    // comments in this same protected configuration for an explicit curve restore.
     public static string Rewrite(string ini,int[][]? rows,int[][]? masks=null)
     {
+        var previous=Parse(ini);
+        var dormant=rows is null?(previous?.Active==ModeCurve?previous.Masks:previous?.DormantMasks??[]):[];
+        try{ValidateMasks(dormant);}catch(InvalidOperationException){dormant=[];}
         masks=rows is null?[]:masks??[];
         ValidateMasks(masks);
         ini=OffsetLine.Replace(ini,"");
+        ini=DormantOffsetLine.Replace(ini,"");
         if(rows is not null)Validate(rows);
         if(ActiveLine.Matches(ini).Count!=1)throw new InvalidOperationException("The fan engine configuration has an unexpected layout.");
         var levels=LevelLine.Matches(ini);
@@ -44,12 +50,13 @@ internal static class FanCurveConfig
         foreach(var row in rows??[[0,FirmwareLevel]])block.Append($"Level={row[0]} {row[1]} 0 0{newline}");
         // The engine subtracts this when reading the sensor. The wide range stops it being subtracted twice.
         foreach(var mask in masks)block.Append($"SensorOffset{mask[0]+1}={mask[1]} -128 127{newline}");
+        foreach(var mask in dormant)block.Append($"// ThinkPadControlDormantAdjustment{mask[0]+1}={mask[1]}{newline}");
         var start=levels[0].Index;
         var result=LevelLine.Replace(ini,"");
         result=result.Insert(start,block.ToString());
         return ActiveLine.Replace(result,m=>$"Active={(rows is null?ModeFirmware:ModeCurve)}"+(m.Value.EndsWith('\r')?"\r":""),1);
     }
-    public sealed record Curve(int Active,int[][] Rows,int[][] Masks);
+    public sealed record Curve(int Active,int[][] Rows,int[][] Masks) {public int[][] DormantMasks {get;init;}=[];}
     public static Curve? Parse(string ini)
     {
         var active=ActiveLine.Match(ini);
@@ -66,13 +73,20 @@ internal static class FanCurveConfig
         {
             var parts=line.Value[(line.Value.IndexOf('=')+1)..].Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries);
             if(parts.Length<1||!int.TryParse(parts[0],out var shift))return null;
-            masks.Add([int.Parse(line.Groups[1].Value)-1,shift]);
+            if(!int.TryParse(line.Groups[1].Value,out var sensor))return null;
+            masks.Add([sensor-1,shift]);
         }
-        return new(mode,[.. rows],[.. masks]);
+        var dormant=new List<int[]>();
+        foreach(Match line in DormantOffsetLine.Matches(ini)) {
+            if(!int.TryParse(line.Value.AsSpan(line.Value.IndexOf('=')+1).Trim(),out var shift))return null;
+            if(!int.TryParse(line.Groups[1].Value,out var sensor))return null;
+            dormant.Add([sensor-1,shift]);
+        }
+        return new(mode,[.. rows],[.. masks]){DormantMasks=[.. dormant]};
     }
     public static object? ReadInstalled()
     {
-        try{var curve=Parse(File.ReadAllText(IniPath,Encoding.Latin1));return curve is null?null:new{active=curve.Active,rows=curve.Rows,masks=curve.Masks};}
+        try{var curve=Parse(File.ReadAllText(IniPath,Encoding.Latin1));return curve is null?null:new{active=curve.Active,rows=curve.Rows,masks=curve.Masks,dormantMasks=curve.DormantMasks};}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException){return null;}
     }
     // The engine reads its configuration only when it starts. It returns the fan to firmware while stopped.

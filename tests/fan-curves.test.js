@@ -189,6 +189,35 @@ test('applying a profile keeps existing adjustments when a fresh learning epoch 
   assert.equal(changed.reapply,true,'A changed adjustment amount must be compared as well as slot IDs');
 });
 
+test('firmware round-trip restores offsets after a provider restart without adjusting firmware readings',async()=>{
+  const first=new DemoProvider();
+  first.fanCurve={active:2,rows:engineRows(levels,true,86),masks:[[10,30]]};
+  await first.command({type:'fan-profile-firmware'});
+  assert.deepEqual(first.fanCurve.masks,[],'Firmware readings have no active correction');
+  assert.deepEqual(first.fanCurve.dormantMasks,[[10,30]]);
+  await first.command({type:'fan-profile-firmware'});
+  const restarted=new DemoProvider();restarted.fanCurve=JSON.parse(JSON.stringify(first.fanCurve));
+  await restarted.command({type:'fan-profile-apply',id:'default-2'});
+  assert.deepEqual(restarted.fanCurve.masks,[[10,30]]);
+  assert.deepEqual(restarted.fanCurve.dormantMasks,[]);
+});
+
+test('dormant offset restoration rejects invalid data and respects settled movement',()=>{
+  const profiles=new FanProfiles(),engine={active:1,rows:[[0,128]],masks:[],dormantMasks:[[10,30],[0,30],[11,71],['2',20]]};
+  assert.deepEqual(profiles.view(ryzen(86),engine).recommendedMasks,[[10,30]]);
+  assert.deepEqual(profiles.view(ryzen(86),engine,[],[10]).recommendedMasks,[],'Fresh movement evidence still revokes a dormant offset');
+});
+
+test('profile application refuses success when the engine drops requested offsets',async()=>{
+  const provider=new WindowsProvider({platform:'win32',runner:async()=> '{}'});
+  let curve={active:1,rows:[[0,128]],masks:[],dormantMasks:[[10,30]]};
+  provider.bridge={request:async(op,args)=>{
+    if(op==='fan-curve'){curve={active:2,rows:args.rows,masks:[],dormantMasks:[]};return 'applied';}
+    return {...ryzen(86),fanCurve:curve,fans:[{id:'tpfc/cooling-system',mode:curve.active===2?'curve':'auto',rpm:3000,capability:{available:true}}],sensors:[]};
+  }};
+  await assert.rejects(provider.command({type:'fan-profile-apply',id:'default-2'}),/sensor-offset read-back mismatch/);
+});
+
 test('live profile application retains the native adjustment and invalidates learning around worker writes',async()=>{
   const calls=[],curve={active:2,rows:engineRows(levels,true,86),masks:[[10,30]]};
   const provider=new WindowsProvider({platform:'win32',runner:async(file)=>file.endsWith('powershell.exe')?'{}':''});
