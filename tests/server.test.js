@@ -79,7 +79,7 @@ test('shutdown is authenticated, validates the request, and releases the provide
   assert.equal((await request('/api/shutdown',{})).status,200);
   await app.close();await app.close();assert.equal(closed,1);
 });
-test('closing/minimizing client releases an active manual fan immediately',async t=>{
+test('explicit client close releases an active manual fan immediately',async t=>{
   const {request,provider}=await fixture(t);
   await provider.command({type:'fan',id:'demo-cooling',mode:'manual',level:4});
   assert.equal((await provider.snapshot()).fans[0].mode,'manual');

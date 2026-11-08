@@ -42,7 +42,7 @@ export function validateCommand(value) {
       ((value.restore === true && value.mhz === undefined) || (value.restore === undefined && Number.isInteger(value.mhz) && (value.mhz === 0 || (value.mhz >= MIN_STEP_MHZ && value.mhz <= MAX_STEP_MHZ))))) return value;
   if (value.type === 'gpu-boost' && keys.every(k => ['type','id','enabled'].includes(k)) &&
       typeof value.id === 'string' && value.id.length <= 200 && typeof value.enabled === 'boolean') return value;
-  if (value.type === 'fan-profile-save' && keys.every(k => ['type','id','name','fanOff','levels'].includes(k)) && (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 64)) &&
+  if (value.type === 'fan-profile-save' && keys.every(k => ['type','id','name','fanOff','levels','maxTemp'].includes(k)) && (value.maxTemp === undefined || Number.isInteger(value.maxTemp)) && (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 64)) &&
       typeof value.name === 'string' && typeof value.fanOff === 'boolean' && Array.isArray(value.levels)) return value;
   if (['fan-profile-apply','fan-profile-delete'].includes(value.type) && keys.every(k => ['type','id'].includes(k)) && typeof value.id === 'string' && value.id.length <= 64) return value;
   if (value.type === 'fan-profile-firmware' && keys.length === 1) return value;
@@ -70,7 +70,7 @@ async function fanProfileCommand(profiles, c, state, applyRows, refresh) {
   }
   const profile = profiles.find(c.id, limit);
   if (!profile.valid) throw new Error(`Edit this profile first: ${profile.problem}`);
-  await applyRows(engineRows(profile.levels, profile.fanOff, limit), view.recommendedMasks);
+  await applyRows(engineRows(profile.levels, profile.fanOff, limit, profile.maxTemp), view.recommendedMasks);
   if ((await refresh()).fanProfiles?.activeId !== profile.id) throw new Error('Fan engine read-back mismatch.');
   return `Fan profile "${profile.name}" applied and verified. It keeps running with the app closed and after a restart.`;
 }

@@ -76,7 +76,7 @@ test('primary-fan eligibility includes Intel and Ryzen ThinkPads but excludes ot
 
 test('portable hardware support refuses service installation outside Program Files', {skip:process.platform!=='win32',timeout:20000},()=>{
   const result=spawnSync('powershell.exe',['-NoProfile','-ExecutionPolicy','RemoteSigned','-File',resolve('scripts/hardware-support.ps1'),'-Action','Install'],{encoding:'utf8',windowsHide:true,env:psEnv});
-  assert.notEqual(result.status,0);assert.match(result.stderr,/requires the Program Files installation/);
+  assert.notEqual(result.status,0);assert.match(result.stderr,/requires the Program Files\s+installation/);
 });
 
 test('automatic hardware task setup supports battery use and stays on-demand',{skip:process.platform!=='win32',timeout:20000},()=>{

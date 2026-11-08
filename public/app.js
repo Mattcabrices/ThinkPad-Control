@@ -282,8 +282,8 @@ function ryzenPanel() {
   return box;
 }
 
-// Each level is held long enough for the app to record a settled reading. Hiding the window or returning
-// to firmware releases the fan as usual, which ends this. The earlier curve is then put back.
+// Each level is held long enough for a settled reading. Closing the window or returning
+// to firmware ends measurement. Minimizing preserves control. The earlier curve is put back.
 async function measureFanLevels(id) {
   if(state.measuring) return;
   const curve=state.snapshot.fanProfiles?.activeId; state.measuring=true; render(true);
@@ -332,9 +332,13 @@ function fanPanel() {
     const restore=button('Return to firmware','button',()=>command({type:'fan',id:fan.id,mode:'auto'})); restore.disabled=select.disabled;
     const fullSpeed=isLevel?button(fan.level===64?'Level 10 is on':'Level 10 · Boost mode','button',()=>command({type:'fan',id:fan.id,mode:'manual',level:64})):null;
     if(fullSpeed) fullSpeed.disabled=select.disabled||fan.level===64;
-    if(fan.level===64) info.append(el('div','metric-detail','Level 10 / Boost mode: very high and unregulated. Not long term.'));
-    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),isLevel?el('p','fan-explanation curve-notice','Level 10 / Boost mode is the fan\'s very highest speed. Not long term.'):null,isLevel?el('p','fan-explanation','It\'s meant for short, intensive work, ideally with Maximum boost on and a raised power limit on the CPU & power page. It doesn\'t change those for you. It takes about 10 seconds to reach, and it stops if this window is closed or minimized.'):null,el('p','fan-explanation',fan.capability.available ? 'A 10-second lease and 85°C watchdog request firmware control if the connection expires or monitored temperatures rise.'+(isLevel?' The bundled engine also returns to firmware above its independent 78°C manual-mode limit.':'') : fan.capability.reason));box.append(row);
+    if(fan.level===64) info.append(el('div','metric-detail','Max fan mode: highest, unregulated speed.'));
+    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),isLevel?el('p','fan-explanation curve-notice','Max fan mode (Level 10) runs the fan at its highest, unregulated speed. Expect more noise and wear with extended use.'):null,isLevel?el('p','fan-explanation','Manual Max mode takes about 10 seconds to spin up. Minimizing keeps manual control active. Closing the window returns manual control to firmware. A saved fan curve continues in either case. Fan Max mode does not enable CPU boost or raise CPU power limits.'):null,el('p','fan-explanation',fan.capability.available ? 'Manual control requires a live connection. If it expires for 10 seconds, or monitored temperatures reach 85°C, the worker requests firmware control.'+(isLevel?' The bundled engine also returns to firmware above its independent 78°C manual-mode limit.':'') : fan.capability.reason));box.append(row);
   }
+  const snapshot=state.snapshot, firmware=snapshot.fanProfiles?.limit;
+  const intelTarget=snapshot.cpuSteps?.hardware?.thermalTargetC;
+  const reported=firmware??(Number.isFinite(intelTarget)?{celsius:intelTarget,source:'Intel thermal target'}:null);
+  box.append(el('p','fan-explanation',`${snapshot.cpu.name}: ${reported?`reported ${reported.source} is ${reported.celsius} \u00b0C.`:'A firmware thermal target is unavailable.'} The 78 \u00b0C engine exit and 85 \u00b0C worker watchdog are app safety thresholds, not this processor's thermal-junction maximum. ${Number.isFinite(intelTarget)?'Intel target readings may include a firmware offset below TjMax.':'A verified thermal-junction maximum is not reported by this sensor interface.'} Manual mode has no fixed total run-time limit; it continues while connected and below its safety thresholds.`));
   return box;
 }
 function fanProfilesPanel() {
@@ -342,11 +346,12 @@ function fanProfilesPanel() {
   if(!fp?.available){ box.append(append(el('div','empty-state'),el('strong','','Fan curves are unavailable'),el('span','',fp?.reason||'Enable hardware access to read this laptop\'s firmware limit.'))); return box; }
   const limit=fp.limit.celsius, profiles=fp.profiles, disabled=state.busy||state.stale;
   const stored=state.drafts.get('fan-profile'), selected=profiles.find(p=>p.id===(stored?.id??fp.activeId))??(stored?.id===null?null:profiles[0]);
-  const draft=stored??{id:selected?.id??null,name:selected?.name??'',fanOff:selected?.fanOff??true,levels:[...(selected?.levels??profiles[0]?.levels??[])]};
+  const draft=stored??{id:selected?.id??null,name:selected?.name??'',fanOff:selected?.fanOff??true,levels:[...(selected?.levels??profiles[0]?.levels??[])],maxTemp:selected?.maxTemp??limit};
+  draft.maxTemp??=limit;
   const keep=()=>state.drafts.set('fan-profile',draft);
   const current=fp.activeId?profiles.find(p=>p.id===fp.activeId)?.name:null;
   box.append(el('p','fan-explanation',`${current?`Running "${current}".`:fp.customCurve?'Running a curve that matches no saved profile.':'Firmware is controlling the fan.'} A curve keeps running with the app closed and after a restart.`));
-  box.append(el('p','fan-explanation curve-notice',`At the firmware thermal limit of ${limit} °C, the fan runs at maximum speed (Level 10) to protect the CPU. This is this laptop's own limit (${fp.limit.source}), not the higher thermal junction limit. Level 7 must start below it.`));
+  box.append(el('p','fan-explanation curve-notice',`Max mode (Level 10) is the fan's highest, unregulated speed. Set its start temperature below or at the firmware thermal limit of ${limit} \u00b0C (${fp.limit.source}). Level 7 must start below Max. Unlike manual mode, the service runs this curve while the window is minimized or closed.`));
   const slotName=slot=>`EC temperature ${slot+1}`;
   if(fp.maskedSlots?.length) box.append(el('p','fan-explanation',`Adjusted for this curve: ${fp.maskedSlots.map(([slot,shift])=>`${slotName(slot)} reads ${shift} °C lower`).join(', ')}, because it stayed flat while the CPU temperature moved. If it heats up, it can still raise the fan, but later.`));
   if(fp.reapply) {
@@ -357,28 +362,34 @@ function fanProfilesPanel() {
   const picker=el('select','mode-select'); picker.setAttribute('aria-label','Fan profile'); picker.disabled=disabled;
   for(const p of profiles){ const option=el('option','',p.valid?p.name:`${p.name} (needs editing)`); option.value=p.id; picker.append(option); }
   const fresh=el('option','','New profile'); fresh.value=''; picker.append(fresh); picker.value=draft.id??'';
-  picker.addEventListener('change',()=>{ const p=profiles.find(x=>x.id===picker.value); state.drafts.set('fan-profile',p?{id:p.id,name:p.name,fanOff:p.fanOff,levels:[...p.levels]}:{...draft,id:null,name:''}); render(true); });
+  picker.addEventListener('change',()=>{ const p=profiles.find(x=>x.id===picker.value); state.drafts.set('fan-profile',p?{id:p.id,name:p.name,fanOff:p.fanOff,levels:[...p.levels],maxTemp:p.maxTemp??limit}:{...draft,id:null,name:''}); render(true); });
   const name=el('input','profile-name'); name.type='text'; name.maxLength=40; name.value=draft.name; name.placeholder='Profile name'; name.setAttribute('aria-label','Profile name'); name.disabled=disabled;
   name.addEventListener('input',()=>{ draft.name=name.value; keep(); });
   box.append(append(el('div','profile-top'),picker,name));
   const steps=el('div','curve-steps'); steps.setAttribute('aria-hidden','true');
   const span=Math.max(limit-fp.minTemp,1), bars=[], outputs=[], ranges=[];
-  const redraw=()=>draft.levels.forEach((temp,i)=>{ const next=draft.levels[i+1]??limit; bars[i].style.setProperty('left',`${(temp-fp.minTemp)/span*100}%`); bars[i].style.setProperty('width',`${(next-temp)/span*100}%`); bars[i].style.setProperty('height',`${(i+1)/7*100}%`); outputs[i].textContent=`${temp} °C`; ranges[i].value=String(temp); });
+  const redraw=()=>draft.levels.forEach((temp,i)=>{ const next=draft.levels[i+1]??draft.maxTemp; bars[i].style.setProperty('left',`${(temp-fp.minTemp)/span*100}%`); bars[i].style.setProperty('width',`${(next-temp)/span*100}%`); bars[i].style.setProperty('height',`${(i+1)/8*100}%`); outputs[i].textContent=`${temp} °C`; ranges[i].value=String(temp); });
   const rows=el('div','curve-rows');
   draft.levels.forEach((temp,i)=>{
     const bar=el('span','curve-bar'); bars.push(bar); steps.append(bar);
-    const range=el('input'); range.type='range'; range.min=String(fp.minTemp+i); range.max=String(limit-(7-i)); range.step='1'; range.value=String(temp); range.disabled=disabled; range.setAttribute('aria-label',`Level ${i+1} start temperature`); ranges.push(range);
+    const range=el('input'); range.type='range'; range.min=String(fp.minTemp+i); range.max=String(draft.maxTemp-(7-i)); range.step='1'; range.value=String(temp); range.disabled=disabled; range.setAttribute('aria-label',`Level ${i+1} start temperature`); ranges.push(range);
     const output=el('output','slider-output',`${temp} °C`); outputs.push(output);
     // Neighbouring levels move out of the way, so levels always rise with temperature.
     range.addEventListener('input',()=>{ const value=Number(range.value); draft.levels[i]=value; for(let k=i+1;k<7;k++)draft.levels[k]=Math.max(draft.levels[k],value+(k-i)); for(let k=i-1;k>=0;k--)draft.levels[k]=Math.min(draft.levels[k],value-(i-k)); keep(); redraw(); });
     rows.append(append(el('div','slider-row curve-row'),el('span','curve-label',`Level ${i+1} starts`),range,output));
   });
-  const axis=append(el('div','curve-axis'),el('span','',`${fp.minTemp} °C`),el('span','',`Maximum speed at ${limit} °C`));
-  box.append(steps,axis,rows); redraw();
+  const maxBar=el('span','curve-bar'); steps.append(maxBar);
+  const maxRange=el('input'); maxRange.type='range'; maxRange.min=String(fp.minTemp+7); maxRange.max=String(limit); maxRange.step='1'; maxRange.value=String(draft.maxTemp); maxRange.disabled=disabled; maxRange.setAttribute('aria-label','Max mode start temperature');
+  const maxOutput=el('output','slider-output',`${draft.maxTemp} °C`);
+  const redrawMax=()=>{ maxOutput.textContent=`${draft.maxTemp} °C`; maxRange.value=String(draft.maxTemp); maxBar.style.setProperty('left',`${(draft.maxTemp-fp.minTemp)/span*100}%`); maxBar.style.setProperty('width',`${(limit-draft.maxTemp)/span*100}%`); maxBar.style.setProperty('height','100%'); ranges.forEach((r,i)=>r.max=String(draft.maxTemp-(7-i))); redraw(); };
+  maxRange.addEventListener('input',()=>{ draft.maxTemp=Number(maxRange.value); for(let i=6;i>=0;i--)draft.levels[i]=Math.min(draft.levels[i],draft.maxTemp-(7-i)); keep(); redrawMax(); });
+  rows.append(append(el('div','slider-row curve-row'),el('span','curve-label','Max mode starts'),maxRange,maxOutput));
+  const axis=append(el('div','curve-axis'),el('span','',`${fp.minTemp} °C`),el('span','',`Thermal limit ${limit} °C`));
+  box.append(steps,axis,rows); redrawMax();
   const stopLabel=el('label','curve-check'), stop=el('input'); stop.type='checkbox'; stop.checked=draft.fanOff; stop.disabled=disabled;
   stop.addEventListener('change',()=>{ draft.fanOff=stop.checked; keep(); }); append(stopLabel,stop,el('span','','Let the fan stop below level 1')); box.append(stopLabel);
   const saveDraft=async()=>{
-    const edits={name:draft.name.trim(),fanOff:draft.fanOff,levels:[...draft.levels]};
+    const edits={name:draft.name.trim(),fanOff:draft.fanOff,levels:[...draft.levels],maxTemp:draft.maxTemp};
     await command({type:'fan-profile-save',...(draft.id?{id:draft.id}:{}),...edits});
     if(state.drafts.has('fan-profile'))return null; // A failed save keeps the draft, and its message is already shown.
     const kept=state.snapshot.fanProfiles.profiles.find(p=>p.name===edits.name);
@@ -390,7 +401,7 @@ function fanProfilesPanel() {
   const apply=button('Apply','button primary',async()=>{ const saved=await saveDraft(); if(saved)await command({type:'fan-profile-apply',id:saved.id}); }); apply.disabled=disabled;
   const remove=button('Delete','button',()=>command({type:'fan-profile-delete',id:draft.id})); remove.disabled=disabled||!draft.id;
   const firmware=button('Use firmware control','button',()=>command({type:'fan-profile-firmware'})); firmware.disabled=disabled||!fp.curveSet; save.disabled=disabled;
-  append(box,append(el('div','fan-actions'),apply,save,remove,firmware),el('p','fan-explanation','Applying restarts the fan engine for a few seconds, with firmware in control meanwhile. App updates return the fan to firmware until you apply a profile again.'));
+  append(box,append(el('div','fan-actions'),apply,save,remove,firmware),el('p','fan-explanation','Applying restarts the fan engine for a few seconds, with firmware in control meanwhile. Installer upgrades preserve the active saved curve.'));
   return box;
 }
 // Optional. Everything else works without it.
@@ -409,7 +420,7 @@ function fanSpeedsPanel() {
   if(learned.firmwarePeak) notes.push(`The highest firmware reading seen here is ${fmt(learned.firmwarePeak)} RPM.`);
   if(notes.length) box.append(el('p','fan-explanation',notes.join(' ')));
   const measure=button(state.measuring?'Measuring…':'Measure all levels','button',()=>measureFanLevels(fan.id)); measure.disabled=state.busy||state.stale||!fan.capability.available||!!state.measuring;
-  append(box,append(el('div','fan-actions'),measure),el('p','fan-explanation','Runs each level for about 25 seconds. It takes about 4 minutes and gets loud. To stop it, use Return to firmware on the Cooling page. Keep this window open: hiding it also stops the test.'));
+  append(box,append(el('div','fan-actions'),measure),el('p','fan-explanation','Runs each level for about 25 seconds. It takes about 4 minutes and gets loud. To stop it, use Return to firmware on the Cooling page. Minimizing keeps the test running; closing the window stops manual control.'));
   return box;
 }
 function gpuPanels() {
@@ -592,7 +603,7 @@ async function refresh() {
       state.snapshot=results[0].snapshot; trackSensorRanges(); state.error=results[0].error; state.stale=results[0].stale||!!results[0].error;
       state.history=results[1]; state.activity=results[2];
       // Only a successfully connected UI can renew the manual fan lease.
-      await api('lease',{active:!state.stale});
+      if(window.thinkpadDesktop!==true)await api('lease',{active:!state.stale});
     } catch(e) { state.error=e.message; state.stale=true; }
     finally { refreshPromise=null; render(); }
   })(); return refreshPromise;

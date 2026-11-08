@@ -42,23 +42,24 @@ export function cleanName(name) {
   if (!value || value.length > 40 || /[\u0000-\u001f\u007f]/.test(value)) throw new Error('Give the profile a name of 1 to 40 characters.');
   return value;
 }
-export function validateCurve(levels, fanOff, limit) {
+export function validateCurve(levels, fanOff, limit, maxTemp = limit) {
   if (!validLimit(limit)) throw new Error('This laptop\'s firmware temperature limit is unavailable, so a fan curve can\'t be checked.');
   if (!Array.isArray(levels) || levels.length !== FAN_LEVELS || !levels.every(Number.isInteger)) throw new Error('A fan curve needs a whole-degree start temperature for each of levels 1 to 7.');
   if (typeof fanOff !== 'boolean') throw new Error('Choose whether the fan may stop.');
   levels.forEach((temp, index) => { if (index && temp <= levels[index - 1]) throw new Error('Each fan level must start at a higher temperature than the one before it.'); });
   if (levels[0] < MIN_CURVE_TEMP) throw new Error(`Fan levels can't start below ${MIN_CURVE_TEMP} °C.`);
   if (levels[FAN_LEVELS - 1] >= limit) throw new Error(`Level 7 must start below this laptop's firmware limit of ${limit} °C, where the fan runs at maximum speed.`);
+  if (!Number.isInteger(maxTemp) || maxTemp > limit || maxTemp <= levels[FAN_LEVELS - 1]) throw new Error(`Max fan mode must start above level 7 and at or below the firmware limit of ${limit} °C.`);
   if (fanOff && levels[0] > MAX_FAN_OFF_TEMP) throw new Error(`If the fan may stop, level 1 must start by ${MAX_FAN_OFF_TEMP} °C.`);
 }
 
 // In the engine, each row applies from its temperature going up, and at or below it going down.
 // At the firmware thermal limit, not the higher junction limit, the fan runs at maximum speed to protect the CPU.
-export function engineRows(levels, fanOff, limit) {
-  validateCurve(levels, fanOff, limit);
+export function engineRows(levels, fanOff, limit, maxTemp = limit) {
+  validateCurve(levels, fanOff, limit, maxTemp);
   const rows = levels.map((temp, index) => [temp, index + 1]);
   if (fanOff) rows.unshift([levels[0] - 5, 0]); else rows[0] = [0, 1];
-  rows.push([limit, MAXIMUM_LEVEL]);
+  rows.push([maxTemp, MAXIMUM_LEVEL]);
   return rows;
 }
 const sameRows = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((row, i) => row[0] === b[i][0] && row[1] === b[i][1]);
@@ -122,21 +123,21 @@ export class FanProfiles {
   }
   list(limit) {
     const items = (this.stored() ?? (limit ? defaultProfiles(limit) : [])).filter(p => p && typeof p.id === 'string');
-    return items.map(p => { try { cleanName(p.name); validateCurve(p.levels, p.fanOff, limit); return { ...p, valid: true }; } catch (e) { return { ...p, valid: false, problem: e.message }; } });
+    return items.map(p => { try { cleanName(p.name); validateCurve(p.levels, p.fanOff, limit, p.maxTemp); return { ...p, valid: true }; } catch (e) { return { ...p, valid: false, problem: e.message }; } });
   }
   write(items) {
-    const clean = items.map(({ id, name, fanOff, levels }) => ({ id, name, fanOff, levels }));
+    const clean = items.map(({ id, name, fanOff, levels, maxTemp }) => ({ id, name, fanOff, levels, ...(maxTemp === undefined ? {} : {maxTemp}) }));
     if (!this.file) { this.memory = clean; return; }
     mkdirSync(dirname(this.file), { recursive: true });
     const temporary = `${this.file}.tmp`; writeFileSync(temporary, JSON.stringify(clean)); renameSync(temporary, this.file);
   }
   save(c, limit) {
-    const name = cleanName(c.name); validateCurve(c.levels, c.fanOff, limit);
+    const name = cleanName(c.name); validateCurve(c.levels, c.fanOff, limit, c.maxTemp);
     const items = this.list(limit), index = items.findIndex(p => p.id === c.id);
     if (c.id && index < 0) throw new Error('That fan profile no longer exists.');
     if (items.some(p => p.id !== c.id && p.name.toLowerCase() === name.toLowerCase())) throw new Error('Another fan profile already uses that name.');
     if (!c.id && items.length >= MAX_PROFILES) throw new Error(`Keep to ${MAX_PROFILES} fan profiles or fewer.`);
-    const profile = { id: c.id ?? randomUUID(), name, fanOff: c.fanOff, levels: c.levels };
+    const profile = { id: c.id ?? randomUUID(), name, fanOff: c.fanOff, levels: c.levels, ...(c.maxTemp === undefined ? {} : {maxTemp:c.maxTemp}) };
     if (index >= 0) items[index] = profile; else items.push(profile);
     this.write(items);
     return profile;
@@ -159,7 +160,7 @@ export class FanProfiles {
     const reason = !engine ? 'Fan curves need the bundled fan engine and hardware access.'
       : !limit ? 'This laptop\'s firmware temperature limit can\'t be read, so fan curves stay off and firmware keeps control.' : '';
     const curveSet = engine?.active === 2;
-    const active = curveSet && limit ? profiles.find(p => p.valid && sameRows(engineRows(p.levels, p.fanOff, limit.celsius), engine.rows)) : null;
+    const active = curveSet && limit ? profiles.find(p => p.valid && sameRows(engineRows(p.levels, p.fanOff, limit.celsius, p.maxTemp), engine.rows)) : null;
     const maskedSlots = engine?.masks ?? [];
     // Lack of evidence never revokes a configured adjustment. Only measurements
     // from a settled epoch showing real movement can recommend its removal.

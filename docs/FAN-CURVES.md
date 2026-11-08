@@ -1,6 +1,6 @@
 # Fan curves and profiles
 
-A fan profile is a name plus the temperature at which each of fan levels 1 to 7 starts. Profiles are on the **Cooling** page. Saving stores one; **Apply** saves any edits and makes it the running curve.
+A fan profile includes start temperatures for levels 1 to 7 and Max mode (Level 10). Profiles are on the **Cooling** page. Saving stores one; **Apply** saves any edits and makes it the running curve.
 
 **Status: tested on one laptop, a T14s Gen 2 on AC.** Applying, switching profiles, running with the app closed, returning to firmware and the flat slot adjustment all worked there. Not tested: a reboot, recovery from a failed apply, a curve actually reaching maximum speed at the limit, battery, stepping up or down through levels with the adjustment in place, or any other model.
 
@@ -10,7 +10,7 @@ The bundled fan engine runs the curve as a Windows service, so it continues with
 
 The worker checks the rows again, writes only the `Level=` and `Active=` lines, and waits for the engine to report the new mode. If that fails, it restores the previous configuration and says so.
 
-**Use firmware control** returns to the installed default. An app update also replaces the engine configuration, which returns the fan to firmware until a profile is applied again.
+**Use firmware control** returns to the installed default. Installer upgrades preserve valid active curves and their sensor adjustments.
 
 ## The firmware limit
 
@@ -25,8 +25,8 @@ If no limit can be read, curves stay off and firmware keeps control.
 
 ## Rules
 
-- At the firmware thermal limit, the fan runs at maximum speed (Level 10) to protect the CPU, and stays there until the temperature falls to level 7's start. This is the laptop's own limit, not the higher thermal junction limit.
-- Level 7 starts below the firmware limit.
+- Max mode starts at its configurable threshold, no later than the reported firmware thermal limit. Existing profiles default to that limit. The firmware target is distinct from a processor thermal-junction maximum; this interface does not provide a verified AMD TjMax.
+- Level 7 starts below Max mode, which cannot start above the firmware thermal limit.
 - Levels must rise with temperature, at least 1 °C apart, and can't start below 30 °C.
 - If the fan may stop, level 1 must start by 65 °C.
 - Level 7 is a regulated step and not the top speed. On a T14s Gen 2, level 7 read about 3800 RPM, and maximum speed read up to 5400 RPM.
@@ -49,9 +49,9 @@ A row applies from its temperature going up, and at or below it going down. So g
 
 ## Level 10 / Boost mode
 
-Level 10 is the fan's top speed: the controller's unregulated "disengaged" mode, sent to the engine as level 64. It's **not for long-term use**. The manual button on the Cooling page is meant for short, intensive work, ideally with Maximum boost on and a raised power limit, which it doesn't set for you. A curve also uses it automatically at the firmware thermal limit, to protect the CPU, and that keeps working with the app closed.
+Level 10 is the fan's top speed: the controller's unregulated "disengaged" mode, sent to the engine as level 64. Extended use increases noise and may increase wear. Fan Max mode does not change CPU boost or CPU power limits. The curve editor has a Max mode start slider; its saved threshold runs in the service with the app closed.
 
-The manual button stays under the same protections as other manual levels: a 10-second lease, so it stops if the window is closed or minimized, plus the 78 °C manual exit and the 85 °C watchdog. On a T14s Gen 2 it read 4900 to 5400 RPM, against about 3800 for level 7, in runs under a minute from a cool start. Long runs haven't been tested.
+The manual button stays under the same protections as other manual levels: a 10-second lease, so lost connections release control; minimizing preserves renewal and closing the window releases control, plus the 78 °C manual exit and the 85 °C watchdog. On a T14s Gen 2 it read 4900 to 5400 RPM, against about 3800 for level 7, in runs under a minute from a cool start. Long runs haven't been tested.
 
 There's no level 8 or 9. The controller has no steps between level 7 and this mode. Switching between the two was tried, and it swung between 3000 and 4900 RPM with an audible surge.
 

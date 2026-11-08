@@ -25,6 +25,9 @@ internal sealed class MainWindow : Form
     private bool smokeHostShown;
     private string smokeStage="constructed";
     private bool quitting,busy,webReady;
+    private bool manualLeaseEnabled=true,leaseTickBusy;
+    private readonly System.Windows.Forms.Timer fanLeaseTimer=new() {Interval=2000};
+    private readonly SemaphoreSlim fanLeaseGate=new(1,1);
     private Process? elevatedWorker;
     private readonly string root=AppContext.BaseDirectory;
     private readonly string dataDirectory;
@@ -57,8 +60,18 @@ internal sealed class MainWindow : Form
         tray=new NotifyIcon {Icon=Icon,Text=Text,ContextMenuStrip=menu,Visible=!smokeMode};tray.DoubleClick+=(_,_)=>ShowWindow();
         activation=ThreadPool.RegisterWaitForSingleObject(activate,(_,_)=>{if(!IsDisposed)BeginInvoke(ShowWindow);},null,Timeout.Infinite,false);
         Shown+=async(_,_)=>await Initialize();
-        FormClosing+=(_,e)=>{if(!quitting){e.Cancel=true;Hide();_ = ReleaseOnHide();}};
-        Resize+=(_,_)=>{if(WindowState==FormWindowState.Minimized){Hide();_ = ReleaseOnHide();}};
+        FormClosing+=(_,e)=>{if(!quitting){e.Cancel=true;manualLeaseEnabled=false;Hide();_ = ReleaseOnHide();}};
+        Resize+=(_,_)=>{if(WindowState==FormWindowState.Minimized)Hide();};
+        // Native timer keeps manual cooling alive even when WebView timers are throttled.
+        fanLeaseTimer.Tick+=async(_,_)=>{
+            if(leaseTickBusy||quitting||busy||!manualLeaseEnabled||backend.Url is null)return;
+            leaseTickBusy=true;
+            await fanLeaseGate.WaitAsync();
+            try{if(!quitting&&manualLeaseEnabled)await backend.RenewFanLease(()=>manualLeaseEnabled&&!quitting);}
+            catch{/* The worker watchdog restores firmware on lost or stale telemetry. */}
+            finally{fanLeaseGate.Release();leaseTickBusy=false;}
+        };
+        fanLeaseTimer.Start();
         backend.Exited+=()=>{if(!quitting&&!IsDisposed)BeginInvoke(()=>ShowFailure("The background process stopped. Use Restart to reconnect."));};
         if(smokeMode) {
             // WebView2 needs a visible native host to finish controller initialization.
@@ -92,8 +105,11 @@ internal sealed class MainWindow : Form
         Environment.ExitCode=passed?0:1;
         await Quit();
     }
-    private void ShowWindow() { Show();WindowState=FormWindowState.Normal;Activate(); }
-    private async Task ReleaseOnHide() { try{await backend.ReleaseFans();}catch{} }
+    private void ShowWindow() { manualLeaseEnabled=true;Show();WindowState=FormWindowState.Normal;Activate(); }
+    private async Task ReleaseOnHide() {
+        await fanLeaseGate.WaitAsync();
+        try{await backend.ReleaseFans();}catch{}finally{fanLeaseGate.Release();}
+    }
     private void ShowFailure(string message)
     {
         status.Text=message;status.Visible=true;status.BringToFront();
@@ -143,7 +159,16 @@ internal sealed class MainWindow : Form
                             var views=viewDocument.RootElement;
                             var passed=new[]{"cpuPage","ryzenPanelAbsent","intelTuningShown","mixedClassesShown","intelGpuShown"}.All(key=>views.TryGetProperty(key,out var value)&&value.ValueKind==JsonValueKind.True);
                             SmokeTrace("intel-views-rendered");await FinishSmoke(passed,passed?null:"Intel demo views did not match expected capabilities.",checks.Clone(),views.Clone());
-                        } else {SmokeTrace("rendered");await FinishSmoke(true,checks:checks.Clone());}
+                        } else {
+                            // Demo provider only: exercise real native lifecycle beyond the lease timeout.
+                            await backend.Post("/api/commands",new {type="fan",id="demo-cooling",mode="manual",level=4});
+                            WindowState=FormWindowState.Minimized;
+                            await Task.Delay(11000);
+                            if(await backend.FirstFanMode()!="manual")throw new InvalidOperationException("Minimizing lost the simulated manual fan lease.");
+                            Close();await ReleaseOnHide();await Task.Delay(3500);
+                            if(await backend.FirstFanMode()!="auto")throw new InvalidOperationException("Closing did not release simulated manual fan control.");
+                            SmokeTrace("minimize-kept-manual-close-released");await FinishSmoke(true,checks:checks.Clone());
+                        }
                         break;
                     }
                     await Task.Delay(200);
@@ -292,6 +317,8 @@ internal sealed class MainWindow : Form
     private async Task Quit()
     {
         if(quitting)return;quitting=true;tray.Visible=false;
+        manualLeaseEnabled=false;fanLeaseTimer.Dispose();
+        await ReleaseOnHide();
         smokeTimer?.Dispose();
         try{await backend.DisposeAsync();}catch{}
         // The pipe worker restores owned fans on EOF. Never force-kill a hardware watchdog.

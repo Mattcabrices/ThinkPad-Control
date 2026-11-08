@@ -2,7 +2,7 @@
 
 An open-source Windows desktop controller for Intel and Ryzen ThinkPads: CPU/GPU telemetry, measured fan RPM, direct fan levels, AC/battery CPU boost controls and local history. Original code is [MIT licensed](LICENSE).
 
-By **Matt Cabrices**. **0.4.0-alpha.22 is an unsigned development alpha. Hardware support is not yet certified on either target model.** The first targets are T14s Gen 2 AMD and T14 Gen 3 AMD. Other ThinkPads are detected by capability; no universal support claim is made.
+By **Matt Cabrices**. **0.4.0-alpha.23 is an unsigned development alpha. Hardware support is not yet certified on either target model.** The first targets are T14s Gen 2 AMD and T14 Gen 3 AMD. Other ThinkPads are detected by capability; no universal support claim is made.
 
 Alpha.3 adds experimental Intel primary-fan setup, hybrid CPU energy preferences and per-class frequency restoration. Intel hardware validation is pending; see [Intel support and test plan](docs/INTEL-SUPPORT.md).
 
@@ -29,13 +29,13 @@ when needed. See [policy recovery](docs/POLICY-RECOVERY.md).
 
 ## Install
 
-The local build produces `ThinkPad-Control-Setup-0.4.0-alpha.22-x64.exe` and a portable ZIP under `artifacts/releases`. Setup installs under Program Files with Start menu shortcuts and an uninstaller. Node and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to Microsoft's download if it is missing.
+The local build produces `ThinkPad-Control-Setup-0.4.0-alpha.23-x64.exe` and a portable ZIP under `artifacts/releases`. Setup installs under Program Files with Start menu shortcuts and an uninstaller. Node and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to Microsoft's download if it is missing.
 
 The package **includes a source-built TPFanCtrl2 2.5.1 with our documented fan-selector patch** and its signed EC module. Setup installs hardware support automatically and configures its service. If PawnIO is absent, setup downloads its official signed installer and verifies its pinned hash and signature. An existing external TPFanControl service is left untouched and reported as a conflict. Firmware retains automatic cooling until you explicitly choose a manual fan level. Installation and selected controls have been exercised on the two target machines; clean-device installation, recovery and the complete validation matrix remain pending. See [observed results](docs/COMPATIBILITY.md).
 
 Hardware access connects by itself when the app opens, with no UAC prompt each time. Setup registers an on-demand scheduled task, under its one approval, that starts a separate hardware worker. The worker exits when the app disconnects, and accepts only your Windows account and the app's bundled runtime. The interface runs without elevation. Windows application control can block unsigned alpha components; trusted signing is required for a public release. Do not disable Windows security features to run this build.
 
-Closing or minimizing sends the app to the tray and releases owned manual fan controls. Choose Exit to stop the app. Uninstall removes the hardware worker task and the owned engine service; user history and the shared PawnIO driver remain. A portable copy does not install privileged hardware support from a user-writable folder.
+Minimizing sends the app to the tray and preserves manual fan control. Closing the window releases manual control to firmware; saved service curves continue. Choose Exit to stop the app. Uninstall removes the hardware worker task and the owned engine service; user history and the shared PawnIO driver remain. A portable copy does not install privileged hardware support from a user-writable folder.
 
 Upgrades migrate validated fan curves and sensor adjustments onto the new engine
 defaults, with a configuration backup and rollback. See [upgrade behavior](docs/UPGRADES.md).

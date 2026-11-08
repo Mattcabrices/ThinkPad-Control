@@ -64,6 +64,28 @@ internal sealed class BackendHost : IAsyncDisposable
         }
     }
     public async Task ReleaseFans() => await Post("/api/lease",new {active=false});
+    internal async Task<string?> FirstFanMode()
+    {
+        using var request=new HttpRequestMessage(HttpMethod.Get,Url+"/api/state");
+        request.Headers.Add("X-Control-Token",token);
+        using var response=await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        using var document=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("snapshot").GetProperty("fans")[0].GetProperty("mode").GetString();
+    }
+    public async Task RenewFanLease(Func<bool> enabled)
+    {
+        if(Url is null)return;
+        using var request=new HttpRequestMessage(HttpMethod.Get,Url+"/api/state");
+        request.Headers.Add("X-Control-Token",token);
+        using var response=await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        using var document=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var state=document.RootElement;
+        var fresh=state.TryGetProperty("stale",out var stale)&&stale.ValueKind==JsonValueKind.False&&
+            state.TryGetProperty("error",out var error)&&error.ValueKind==JsonValueKind.Null;
+        if(enabled())await Post("/api/lease",new {active=fresh});
+    }
     public async Task VerifyHardwareAccess()
     {
         if(Url is null)throw new InvalidOperationException("Background process is not connected.");

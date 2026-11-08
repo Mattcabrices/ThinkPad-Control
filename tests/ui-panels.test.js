@@ -32,8 +32,8 @@ test('live control panels render supported and unavailable fields without runtim
     button:(text)=>node('button',text),fmt:value=>String(value),command:()=>{throw new Error('Rendering must not issue commands');},$(){throw new Error('Unexpected setup request');}});
   vm.runInContext(component('ryzenPanel','fanPanel')+component('fanPanel','gpuPanels'),context);
   assert.ok(vm.runInContext('ryzenPanel().children.length',context)>4);
-  assert.equal(vm.runInContext('fanPanel().children.length',context),1);
-  snapshot.fans[0].rpm=0;assert.equal(vm.runInContext('fanPanel().children.length',context),1);
+  assert.equal(vm.runInContext('fanPanel().children.length',context),2);
+  snapshot.fans[0].rpm=0;assert.equal(vm.runInContext('fanPanel().children.length',context),2);
   snapshot.ryzen.fields={sustainedWatts:{available:false,reason:'Firmware rejected setting'}};
   assert.ok(vm.runInContext('ryzenPanel().children.length',context)>4);
   snapshot.ryzen={available:false,reason:'Unsupported model'};
@@ -134,4 +134,19 @@ test('CPU controls show a custom limit without claiming its provenance or embedd
   assert.ok(!text.includes('was already in your Windows power plan'));
   assert.ok(!text.includes("wasn't set by this app"));
   assert.ok(!text.includes('has no effect right now'));
+});
+
+test('Max fan curve row moves higher steps down and saves the selected threshold',async()=>{
+  const snapshot=await new DemoProvider().snapshot(), commands=[];
+  const make=(tag,text)=>({...node(tag,text),style:{setProperty(){}},events:{},addEventListener(type,fn){this.events[type]=fn;}});
+  const state={snapshot,drafts:new Map(),busy:false,stale:false};
+  const context=vm.createContext({state,Map,Number,Math,el:(tag,cls,text)=>make(tag,text),panel:()=>make('panel'),append:(p,...c)=>{p.append(...c.filter(Boolean));return p;},button:(text,cls,action)=>({...make('button',text),action}),command:c=>{commands.push(c);},fmt:String});
+  vm.runInContext(component('fanProfilesPanel','fanSpeedsPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)], nodes=walk(vm.runInContext('fanProfilesPanel()',context));
+  assert.ok(nodes.some(n=>n.text==='Max mode starts'));
+  const sliders=nodes.filter(n=>n.tag==='input'&&n.type==='range');assert.equal(sliders.length,8);
+  sliders[7].value='70';sliders[7].events.input();
+  const draft=state.drafts.get('fan-profile');assert.equal(draft.maxTemp,70);assert.equal(draft.levels[6],69);
+  await nodes.find(n=>n.text==='Save profile').action();
+  assert.equal(commands[0].maxTemp,70);assert.equal(commands[0].levels[6],69);
 });

@@ -213,3 +213,22 @@ test('full speed is the only accepted level above 7', () => {
   assert.ok(validateCommand({ type: 'fan', id: 'f', mode: 'manual', level: 7 }));
   for (const level of [0, 8, 63, 65, 128]) assert.throws(() => validateCommand({ type: 'fan', id: 'f', mode: 'manual', level }));
 });
+
+test('Max threshold persists, applies and reads back without changing legacy profiles', async () => {
+  const provider=new DemoProvider(), initial=(await provider.snapshot()).fanProfiles;
+  const levels=[40,45,50,55,60,65,70];
+  const command={type:'fan-profile-save',name:'Earlier Max',fanOff:true,levels,maxTemp:75};
+  validateCommand(command);await provider.command(command);
+  const saved=(await provider.snapshot()).fanProfiles.profiles.find(p=>p.name==='Earlier Max');
+  assert.equal(saved.maxTemp,75);
+  await provider.command({type:'fan-profile-apply',id:saved.id});
+  assert.deepEqual(provider.fanCurve.rows.at(-1),[75,64]);
+  assert.equal((await provider.snapshot()).fanProfiles.activeId,saved.id);
+  assert.deepEqual(engineRows(levels,true,85).at(-1),[85,64]);
+  assert.throws(()=>validateCurve(levels,true,85,70),/Max fan mode/);
+  assert.throws(()=>validateCurve(levels,true,85,86),/Max fan mode/);
+  assert.throws(()=>validateCommand({...command,maxTemp:'75'}));
+  const dir=mkdtempSync(join(tmpdir(),'thinkpad-max-'));
+  try {const file=join(dir,'profiles.json');new FanProfiles(file).save(command,85);assert.equal(new FanProfiles(file).list(85).find(p=>p.name===command.name).maxTemp,75);}
+  finally {rmSync(dir,{recursive:true,force:true});}
+});
