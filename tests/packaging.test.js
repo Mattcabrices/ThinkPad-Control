@@ -4,11 +4,38 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const ready=process.platform==='win32'&&existsSync('.tools/dependencies/TPFanControl.exe');
 // Windows PowerShell must discover its own inbox modules rather than inherit pwsh paths.
 const psEnv={...process.env};
 for(const key of Object.keys(psEnv))if(key.toLowerCase()==='psmodulepath')delete psEnv[key];
+test('dependency downloads retry transient failures but never accept partial or hash-mismatched data', {skip:process.platform!=='win32',timeout:20000},()=>{
+  const root=mkdtempSync(join(tmpdir(),'thinkpad-download-fixture-'));
+  try {
+    const hash=createHash('sha256').update('verified').digest('hex');
+    for(const mode of ['transient','permanent','corrupt']) {
+      const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
+      cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
+      writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url:'https://invalid.example/never-contacted',sha256:hash}]}));
+      const command=`$ErrorActionPreference='Stop';$global:attempts=0;$global:delays=@();
+function Start-Sleep {param($Seconds) $global:delays+= $Seconds}
+function Invoke-WebRequest {param([switch]$UseBasicParsing,$Uri,$OutFile,$TimeoutSec)
+ $global:attempts++
+ if('${mode}' -eq 'permanent' -or ('${mode}' -eq 'transient' -and $global:attempts -eq 1)){[IO.File]::WriteAllText($OutFile,'partial');throw [Net.WebException]::new('simulated transport timeout')}
+ [IO.File]::WriteAllText($OutFile,$(if('${mode}' -eq 'corrupt'){'corrupt'}else{'verified'}))
+}
+$failed=$false;try{& '${join(fixture,'scripts/fetch-dependencies.ps1').replaceAll("'","''")}'}catch{$failed=$true}
+$target='${join(fixture,'.tools/dependencies/asset.bin').replaceAll("'","''")}';
+if('${mode}' -eq 'transient') {if($failed -or $global:attempts -ne 2 -or !(Test-Path -LiteralPath $target) -or $global:delays.Count -ne 1){throw 'Transient download did not recover'}}
+else {if(!$failed -or (Test-Path -LiteralPath $target)){throw 'Failed download entered verified cache'};if($global:attempts -ne $(if('${mode}' -eq 'corrupt'){1}else{3})){throw 'Incorrect retry bound'}}
+if(Test-Path -LiteralPath ($target+'.download')){throw 'Partial download was not cleaned up'}
+`;
+      const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{encoding:'utf8',windowsHide:true,env:psEnv});
+      assert.equal(result.status,0,`${mode}: ${result.stderr}`);
+    }
+  } finally {rmSync(root,{recursive:true,force:true});}
+});
 test('fan-engine package preserves licenses/source and starts in firmware mode', {skip:!ready,timeout:30000},()=>{
   const root=mkdtempSync(join(tmpdir(),'thinkpad-package-'));
   try {
