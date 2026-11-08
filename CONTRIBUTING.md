@@ -10,6 +10,11 @@ Run npm run check, scripts/build-native.ps1, scripts/build-desktop.ps1
 The Windows CI workflow follows these steps. Network access is required for
 NuGet and pinned upstream downloads. No real hardware writes belong in CI.
 
+`npm test` selects only `tests/*.test.js` and runs one test file at a time to keep
+CPU use low. Keep manual hardware harnesses outside this
+directory and invoke them explicitly only in an approved maintenance window.
+Do not use unrestricted `node --test` discovery in a hardware-test workspace.
+
 For the installer, put the official Inno Setup 6.7.3 compiler in .tools/inno.
 Review that compiler's licensing for your use. Signing credentials must stay
 outside the source tree. CI uploads unsigned alpha artifacts, never releases.
