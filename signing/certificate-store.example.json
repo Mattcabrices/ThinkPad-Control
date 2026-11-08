@@ -1,0 +1,7 @@
+{
+  "Provider": "CertificateStore",
+  "SignToolPath": "REPLACE_WITH_PATH_FROM_TOOLS_JSON",
+  "CertificateThumbprint": "REPLACE_WITH_CODE_SIGNING_CERTIFICATE_THUMBPRINT",
+  "MachineStore": false,
+  "TimestampUrl": "http://timestamp.digicert.com"
+}

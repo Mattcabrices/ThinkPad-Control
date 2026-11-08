@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../native/RyzenProfile.cs" Link="RyzenProfile.cs" />
+    <Compile Include="../native/CpuPStateDecoder.cs" Link="CpuPStateDecoder.cs" />
+    <Compile Include="../native/IntelPowerLimits.cs" Link="IntelPowerLimits.cs" />
+    <Compile Include="../native/PowerPolicy.cs" Link="PowerPolicy.cs" />
+    <Compile Include="../native/SensorSession.cs" Link="SensorSession.cs" />
+    <Compile Include="../native/SensorReadings.cs" Link="SensorReadings.cs" />
+    <Compile Include="../native/IndependentWatchdog.cs" Link="IndependentWatchdog.cs" />
+    <Compile Include="../native/RyzenController.cs" Link="RyzenController.cs" />
+    <Compile Include="../native/ThermalReadings.cs" Link="ThermalReadings.cs" />
+    <Compile Include="../native/FanCurveConfig.cs" Link="FanCurveConfig.cs" />
+    <Compile Include="../native/TpfcAdapter.cs" Link="TpfcAdapter.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../native/TpfcEngineTrust.cs" Link="TpfcEngineTrust.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="TpfcEngineSha256" Value="$(TpfcEngineSha256)" Condition="'$(TpfcEngineSha256)' != ''" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../native/MandatoryPipeLabel.cs" Link="MandatoryPipeLabel.cs" />
+    <Compile Include="../native/PrivatePipe.cs" Link="PrivatePipe.cs" />
+    <Compile Include="../desktop/WorkerTask.cs" Link="WorkerTask.cs" />
+    <Compile Include="../desktop/BackendHost.cs" Link="BackendHost.cs" />
+  </ItemGroup>
+</Project>
+
+
+

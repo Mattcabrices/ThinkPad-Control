@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "Microsoft.ArtifactSigning.Client": {
+        "type": "Direct",
+        "requested": "[1.0.151, )",
+        "resolved": "1.0.151",
+        "contentHash": "F/A85naEmuBmHPEgB7woeyGtxKNLCWcM8Hp3zy+FY9P2eN0vH62ab9lRlFYY6UrP8XMO1YouwoQ+cztyYS/XsA=="
+      },
+      "Microsoft.Windows.SDK.BuildTools": {
+        "type": "Direct",
+        "requested": "[10.0.28000.2957, )",
+        "resolved": "10.0.28000.2957",
+        "contentHash": "nTsRheC9AO+if3BykWkRJ4QXkIMfkqufnBFPIcSEOj7rnX60fqiGrORnxzVFnIXJvsMIjlDOvs/K5EzMLA2RKQ=="
+      }
+    }
+  }
+}

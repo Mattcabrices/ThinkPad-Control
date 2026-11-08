@@ -1,0 +1,7 @@
+{
+  "Provider": "ArtifactSigning",
+  "SignToolPath": "REPLACE_WITH_PATH_FROM_TOOLS_JSON",
+  "DlibPath": "REPLACE_WITH_PATH_FROM_TOOLS_JSON",
+  "MetadataFilePath": "REPLACE_WITH_ABSOLUTE_PATH_TO_METADATA_JSON",
+  "TimestampUrl": "http://timestamp.acs.microsoft.com"
+}
