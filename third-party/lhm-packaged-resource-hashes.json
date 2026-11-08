@@ -1,0 +1,62 @@
+[
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.AMDFamily0F.bin",
+    "sha256": "1788550c02100ad6bbc91604399ed6e055058ea0f6c0c828c02d9b01a09ad27f",
+    "length": 8404
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.AMDFamily10.bin",
+    "sha256": "79be1396621aa44eb149c5dc6d1bab4519b9cfa49a32af5e022cb9f9ca887658",
+    "length": 16836
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.AMDFamily17.bin",
+    "sha256": "099dc01d6db97ea997fec4a461e191cc64b9d7ce47c9d2153c451c56c2adcf50",
+    "length": 9300
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.IntelMSR.bin",
+    "sha256": "ed41a0d0de082f4668a9caccb9681ebbad97a8ed3452c41918dda1eb454b77a9",
+    "length": 4068
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.IsaBridgeEC.bin",
+    "sha256": "7218c633384bd019cce09e8df91f74996f980765ac44dde0f22b0b5318c20f03",
+    "length": 51628
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.LpcACPIEC.bin",
+    "sha256": "c38fd116e7aff4d1fdb0a494e296be0a6708e5a22fc72f14587442fb7f8f7906",
+    "length": 2612
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.LpcCrOSEC.bin",
+    "sha256": "277ed6ce6b5f647d5dae9b06c83ed39e904974b06f95598d49f4737237974776",
+    "length": 19692
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.LpcIO.bin",
+    "sha256": "3dcf8b2bc80ff642d97c4608511a818642b5bf315ff53df3df393d043e71d101",
+    "length": 17172
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.RyzenSMU.bin",
+    "sha256": "0cf0fe1296c5c38f4bee0f96352b35f14d32ab97cb58fd17600646d98507d8aa",
+    "length": 38036
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.SmbusI801.bin",
+    "sha256": "76b082a144027244fe7bbf3ca0e987e7dfa279aa87e0ccc2a6a918e10e2038e1",
+    "length": 40788
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.SmbusNCT6793.bin",
+    "sha256": "385bd1b229faa44aefe2eb1f938ac629f6d897f1a4931dab5341b18b3bd432c1",
+    "length": 17548
+  },
+  {
+    "name": "LibreHardwareMonitor.Resources.PawnIo.SmbusPIIX4.bin",
+    "sha256": "3f8b44c93eb030d59fb68c6fdc6857c61313eab2b6aa0ed64595396d71bf3ea3",
+    "length": 37260
+  }
+]

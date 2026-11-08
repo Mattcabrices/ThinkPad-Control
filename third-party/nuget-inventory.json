@@ -1,0 +1,254 @@
+[
+  {
+    "package": "blacksharp.core/1.0.7",
+    "license": "MPL-2.0",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MPL-2.0",
+    "projectUrl": "https://github.com/Blacktempel/BlackSharp",
+    "repositoryUrl": "https://github.com/Blacktempel/BlackSharp",
+    "repositoryCommit": "c70b735c6cec123ee8a046ac4a0bc6c606f52cf0"
+  },
+  {
+    "package": "diskinfotoolkit/1.1.2",
+    "license": "MPL-2.0",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MPL-2.0",
+    "projectUrl": "https://github.com/Blacktempel/DiskInfoToolkit",
+    "repositoryUrl": "https://github.com/Blacktempel/DiskInfoToolkit",
+    "repositoryCommit": "25319eae5781e75bcf141e844ceab2afe94d40ea"
+  },
+  {
+    "package": "hidsharp/2.6.4",
+    "license": "LICENSE.txt",
+    "licenseType": "file",
+    "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+    "projectUrl": "https://software.seekye.com/hidsharp",
+    "repositoryUrl": null,
+    "repositoryCommit": null
+  },
+  {
+    "package": "librehardwaremonitorlib/0.9.6",
+    "license": "MPL-2.0",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MPL-2.0",
+    "projectUrl": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+    "repositoryUrl": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+    "repositoryCommit": "3d331e3370efb858411f19511373eff65a218701"
+  },
+  {
+    "package": "microsoft.net.illink.tasks/8.0.33",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/runtime",
+    "repositoryCommit": "da7a9beabf4cccc624399d583f52f080a4c858c2"
+  },
+  {
+    "package": "mono.posix.netstandard/1.0.0",
+    "license": null,
+    "licenseType": null,
+    "licenseUrl": "https://go.microsoft.com/fwlink/?linkid=869050",
+    "projectUrl": "https://go.microsoft.com/fwlink/?linkid=869051",
+    "repositoryUrl": null,
+    "repositoryCommit": null
+  },
+  {
+    "package": "ramspdtoolkit-ndd/1.4.2",
+    "license": "MPL-2.0",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MPL-2.0",
+    "projectUrl": "https://github.com/Blacktempel/RAMSPDToolkit",
+    "repositoryUrl": "https://github.com/Blacktempel/RAMSPDToolkit",
+    "repositoryCommit": "3b47b960e0830fef344624ad5e389675d5f0a1ce"
+  },
+  {
+    "package": "runtime.android-arm.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.android-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.android-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.android-x86.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-arm.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-bionic-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-bionic-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-musl-arm.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-musl-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-musl-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.linux-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.maccatalyst-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.maccatalyst-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.osx-arm64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "runtime.osx-x64.runtime.native.system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "system.codedom/10.0.2",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "44525024595742ebe09023abe709df51de65009b"
+  },
+  {
+    "package": "system.io.ports/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  },
+  {
+    "package": "system.management/10.0.2",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "44525024595742ebe09023abe709df51de65009b"
+  },
+  {
+    "package": "system.threading.accesscontrol/10.0.3",
+    "license": "MIT",
+    "licenseType": "expression",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "projectUrl": "https://dot.net/",
+    "repositoryUrl": "https://github.com/dotnet/dotnet",
+    "repositoryCommit": "c2435c3e0f46de784341ac3ed62863ce77e117b4"
+  }
+]

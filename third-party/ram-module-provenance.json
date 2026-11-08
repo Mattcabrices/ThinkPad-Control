@@ -1,0 +1,20 @@
+[
+  {
+    "release": "0.1.6",
+    "module": "SmbusI801.bin",
+    "sha256": "5a51425230fe4448a7dcf6d009b175c9b56f65c782853cc3c21cb8c456f6fa54",
+    "archive": "RAMSPDToolkit-source.zip"
+  },
+  {
+    "release": "0.1.6",
+    "module": "SmbusNCT6793.bin",
+    "sha256": "8dbca7332576d6261a8e88055e1f053d9f2cd5ccdd5bf0840e01b48d4ef4933f",
+    "archive": "RAMSPDToolkit-source.zip"
+  },
+  {
+    "release": "0.1.6",
+    "module": "SmbusPIIX4.bin",
+    "sha256": "3caab1f324c402d8c22e6e82ce98a363092262edf38e2ce32a8b60f01c1e3703",
+    "archive": "RAMSPDToolkit-source.zip"
+  }
+]
