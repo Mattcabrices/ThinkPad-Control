@@ -49,12 +49,12 @@ async function api(path, body) {
   return result;
 }
 function toast(message, error = false) {
-  const box = $('#toast'); clearTimeout(toastTimer); box.textContent = message; box.className = error ? 'error' : ''; box.hidden = false;
-  toastTimer = setTimeout(() => { box.hidden = true; },error ? 13000 : 6000);
+  const box = $('#toast'); clearTimeout(toastTimer); $('#toast-message').textContent = message; box.className = error ? 'error' : '';box.setAttribute('role',error?'alert':'status'); box.hidden = false;
+  if(!error)toastTimer = setTimeout(() => { box.hidden = true; },6000);
 }
 async function command(value) {
   if (state.busy || state.stale) return null;
-  state.busy = true; render();
+  state.busy = true; state.pendingCommand=value; render();
   try {
     const result = await api('commands',value); state.snapshot = result.snapshot;
     if (value.type === 'ryzen-tune' && value.restore) {
@@ -71,7 +71,7 @@ async function command(value) {
     try { state.activity = await api('activity'); } catch { /* Verified control succeeded; history refresh can retry. */ }
     return result;
   } catch(e) { toast(e.message,true); return null; }
-  finally { state.busy = false; await refresh(); }
+  finally { state.busy = false; state.pendingCommand=null; await refresh(); }
 }
 function switchControl(title, description, value, capability, action) {
   const row = el('div','control-row');
@@ -156,7 +156,9 @@ function chart() {
 }
 function boostPanel(detailed=false) {
   const box=panel('Processor boost','power','Lets the CPU run above its rated speed when needed: faster, but hotter and louder.'); box.classList.add('control-panel');
-  box.append(el('p','step-note','Processor boost on Overview and CPU & power controls the same setting. Turning it off in either place disables boost for that power source. CPU speed limit caps the requested frequency; No limit removes the cap but does not enable boost. Firmware power and temperature limits also constrain boost.'));
+  box.append(el('p','step-note','Shared across Overview and CPU & power. Your CPU speed limit still applies.'));
+  const help=el('details','control-help');help.open=!!state.boostHelpOpen;help.addEventListener('toggle',()=>{state.boostHelpOpen=help.open;});
+  append(help,el('summary','','How boost and limits work'),el('p','','Processor boost on Overview and CPU & power controls the same setting. Turning it off in either place disables boost for that power source. CPU speed limit caps the requested frequency; No limit removes the cap but does not enable boost. Firmware power and temperature limits also constrain boost.'));
   const s=state.snapshot, cap=s.capabilities.cpuBoost, ac=s.boost ? s.boost.ac!==0 : null, dc=s.boost ? s.boost.dc!==0 : null;
   const all=ac===null ? null : ac===dc ? ac : 'mixed';
   append(box,
@@ -168,7 +170,8 @@ function boostPanel(detailed=false) {
     const recovery=source=>s.cpuSteps?.maxBoostRecovery?.[source]===true;
     const maxSourceCap=source=>recovery(source)?{available:false,reason:'Finish boost recovery before enabling Maximum boost again.'}:maxCap;
     const limited=source=>{const limit=s.cpuSteps?.policy?.[source];return limit&&s.cpuSteps.baseMhz&&limit<=s.cpuSteps.baseMhz?` Your ${limit} MHz speed limit stays in force.`:'';};
-    box.append(el('div','boost-section-label','Maximum boost enables Processor boost and sets Windows to favor performance over efficiency for the selected power source. It aims to keep boost active whenever workload and available headroom allow, including sustained workloads. It cannot hold a fixed boost clock continuously: idle time, CPU speed limit, power, temperature and firmware still govern actual speed.'));
+    box.append(el('div','boost-section-label','Maximum boost favors sustained performance while keeping your speed and firmware limits.'));
+    help.append(el('p','','Maximum boost enables Processor boost and sets Windows to favor performance over efficiency for the selected power source. It aims to keep boost active whenever workload and available headroom allow, including sustained workloads. It cannot hold a fixed boost clock continuously: idle time, CPU speed limit, power, temperature and firmware still govern actual speed.'));
     append(box,
       switchControl('Maximum boost: plugged in',`Enable boost and favor sustained performance on AC power. Keeps your CPU speed limit and firmware power limits.${limited('ac')}`,max?.ac??null,maxSourceCap('ac'),()=>command({type:'cpu-max-boost',source:'ac',enabled:!max?.ac})),
       switchControl('Maximum boost: on battery',`Enable boost and favor sustained performance on battery. Keeps your CPU speed limit and firmware power limits.${limited('dc')}`,max?.dc??null,maxSourceCap('dc'),()=>command({type:'cpu-max-boost',source:'dc',enabled:!max?.dc})));
@@ -178,7 +181,7 @@ function boostPanel(detailed=false) {
       box.append(el('p','step-note',`A previous boost change ${label} could not be fully verified. Restore the saved recovery target before enabling Maximum boost again.`),restore);
     }
   }
-  return box;
+  box.append(help);return box;
 }
 function stepChoice(mhz,hardware) {
   if(mhz===0)return {title:'No limit',detail:'Full speed'};
@@ -263,9 +266,9 @@ function advancedCpuTuning() {
 function ryzenPanel() {
   const r=state.snapshot.ryzen, box=panel('Advanced Ryzen tuning','cpu',null,el('span','panel-pill','DIRECT SMU · EXPERIMENTAL'));
   if (!r?.current) {box.append(el('p','big-info',r?.reason||'Enable hardware access to discover compatible Ryzen controls.'));return box;}
-  box.append(el('p','big-info','Control the power budget for sustained and short workloads, plus the CPU temperature ceiling, directly in Ryzen firmware. These limits set the headroom available for boost; they do not enable Processor boost or remove the CPU speed limit.'));
-  box.append(el('p','metric-detail','Every change must match firmware read-back. Raising a requested limit does not guarantee higher sustained wattage or faster clocks. Unsupported settings are read-only.'));
-  box.append(el('p','metric-detail','For sustained boosting under load, use Maximum boost for the intended power source and choose a CPU speed limit that permits boost, or No limit. Turning Processor boost off on Overview or CPU & power prevents boosting even with higher Ryzen power limits. Actual clocks still depend on workload, cooling and firmware. Changes here are manual and Lenovo firmware may overwrite them; the app does not automatically reapply them.'));
+  box.append(el('p','big-info','Set power and temperature limits in Ryzen firmware. Processor boost and CPU speed limits still apply.'));
+  const help=el('details','control-help');help.open=!!state.ryzenHelpOpen;help.addEventListener('toggle',()=>{state.ryzenHelpOpen=help.open;});
+  append(help,el('summary','','About firmware limits and baselines'),el('p','','Every change must match firmware read-back. Raising a requested limit does not guarantee higher sustained wattage or faster clocks. Unsupported settings are read-only.'),el('p','','For sustained boosting under load, use Maximum boost for the intended power source and choose a CPU speed limit that permits boost, or No limit. Turning Processor boost off on Overview or CPU & power prevents boosting even with higher Ryzen power limits. Actual clocks still depend on workload, cooling and firmware. Changes here are manual and Lenovo firmware may overwrite them; the app does not automatically reapply them.'));
   for(const [source,label] of [['ac','Plugged in'],['dc','On battery']]){
     const mode=state.snapshot.boost?.[source],limit=state.snapshot.cpuSteps?.policy?.[source];
     const boost=Number.isFinite(mode)?mode===0?'Processor boost is off; raising these limits will not enable it.':'Processor boost is enabled.':'Processor boost status is unavailable.';
@@ -281,15 +284,17 @@ function ryzenPanel() {
     input.addEventListener('input',()=>state.ryzenDrafts.set(key,input.value));
     const apply=button('Apply','button primary',()=>{if(input.reportValidity())command({type:'ryzen-tune',setting:key,value:Number(input.value),restore:false});});apply.disabled=input.disabled;
     const restore=button('Restore baseline','button',()=>command({type:'ryzen-tune',setting:key,restore:true}));restore.disabled=state.busy||state.stale||!r.available||r.baseline?.[key]==null||r.fields?.[key]?.restoreAvailable===false;
+    apply.setAttribute('aria-label',`Apply ${label}`);restore.setAttribute('aria-label',`Restore ${label} baseline`);
     const row=el('div',`ryzen-row${blocked?' ryzen-read-only':''}`), name=append(el('div'),el('strong','',label));
     if(blocked)name.append(el('span','tuning-readonly',readOnly?'Read-only':'Custom changes unavailable'));
-    name.append(el('div','metric-detail',`Current ${fmt(r.current[key],1)} ${unit} · connection baseline ${fmt(r.baseline?.[key],1)} ${unit}`));
+    name.append(append(el('div','tuning-readings'),append(el('span'),el('span','reading-label','Current '),el('strong','',`${fmt(r.current[key],1)} ${unit}`)),append(el('span'),el('span','reading-label','Baseline '),el('strong','',`${fmt(r.baseline?.[key],1)} ${unit}`))));
+    input.title=`Requested limit · ${range.min}–${range.max} ${unit}${blocked?' · '+(field.reason||'Read-only'):''}`;
     append(row,name,append(el('div','fan-actions'),input,el('span','',unit),apply,restore));
     if(blocked)row.append(el('p','metric-detail',field.reason||'Firmware changes are unavailable for this setting.'));
     if(blocked&&!readOnly&&!restore.disabled)row.append(el('p','metric-detail','New values are disabled. Restore baseline remains available for recovery.'));
     box.append(row);
   }
-  box.append(el('p','fan-explanation','Restore baseline uses the value observed when this hardware worker connected; it is not a factory reset. Limits may remain active after closing the app until firmware replaces them. After changing AC/battery source, reconnect hardware access before tuning. Voltage, multipliers and unsupported GPU controls are not exposed.'));
+  help.append(el('p','','Restore baseline uses the value observed when this hardware worker connected; it is not a factory reset. Limits may remain active after closing the app until firmware replaces them. After changing AC/battery source, reconnect hardware access before tuning. Voltage, multipliers and unsupported GPU controls are not exposed.'));box.append(help);
   return box;
 }
 
@@ -341,11 +346,14 @@ function fanPanel() {
       command({type:'fan',id:fan.id,mode:value.mode,...(value.mode==='manual'?(isLevel?{level:value.percent}:{percent:value.percent}):{})});
     }); apply.disabled=select.disabled||draft.mode==='curve';
     const restore=button('Return to firmware','button',()=>command({type:'fan',id:fan.id,mode:'auto'})); restore.disabled=select.disabled;
-    const fullSpeed=isLevel?button(fan.level===64?'Level 10 is on':'Level 10 · Boost mode','button',()=>command({type:'fan',id:fan.id,mode:'manual',level:64})):null;
+    const fullSpeed=isLevel?button(fan.level===64?'Max active':'Max fan','button',()=>command({type:'fan',id:fan.id,mode:'manual',level:64})):null;
     if(fullSpeed) fullSpeed.disabled=select.disabled||fan.level===64;
     if(fan.level===64) info.append(el('div','metric-detail','Max fan mode: highest, unregulated speed.'));
     const policy=state.snapshot.fanProfiles?.manualTemperature;
-    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),isLevel?el('p','fan-explanation curve-notice','Max fan mode (Level 10) runs the fan at its highest, unregulated speed. Expect more noise and wear with extended use.'):null,isLevel?el('p','fan-explanation','Manual Max mode takes about 10 seconds to spin up. Minimizing keeps manual control active. Closing the window returns manual control to firmware. A saved fan curve continues in either case. Fan Max mode does not enable CPU boost or raise CPU power limits.'):null,el('p','fan-explanation',fan.capability.available ? `Manual control returns to firmware if the connection expires for 10 seconds, readings become unavailable, or monitored temperatures reach ${isLevel?policy?.celsius??85:85}°C. This includes manual Max mode.` : fan.capability.reason));
+    const help=el('details','control-help cooling-help');state.fanHelpOpen??=new Map();help.open=!!state.fanHelpOpen.get(fan.id);help.addEventListener('toggle',()=>state.fanHelpOpen.set(fan.id,help.open));
+    help.append(el('summary','',`Manual safety & behavior · ${isLevel?policy?.celsius??85:85}°C cutoff`));
+    append(row,append(el('div','fan-actions'),apply,fullSpeed,restore),el('p','fan-explanation',fan.capability.available?`Manual control returns to firmware at ${isLevel?policy?.celsius??85:85}°C or if the connection is lost. Minimizing keeps control; closing releases it.`:fan.capability.reason));
+    append(help,isLevel?el('p','','Max fan mode (Level 10) runs the fan at its highest, unregulated speed. Expect more noise and wear with extended use.'):null,isLevel?el('p','','Manual Max mode takes about 10 seconds to spin up. A saved fan curve continues with the app minimized or closed. Fan Max mode does not enable CPU boost or raise CPU power limits.'):null,el('p','',`The worker requests firmware if the connection expires for 10 seconds, readings become unavailable, or monitored temperatures reach the selected cutoff. This includes manual Max mode.`));
     if(isLevel&&policy) {
       const saved=state.drafts.get('manual-temperature')??{automatic:policy.automatic,celsius:policy.celsius};
       const automatic=el('input');automatic.type='checkbox';automatic.checked=saved.automatic;automatic.setAttribute('aria-label','Use laptop thermal limit for manual fan control');
@@ -354,14 +362,12 @@ function fanPanel() {
       automatic.addEventListener('change',()=>{temperature.disabled=automatic.checked;remember();});temperature.addEventListener('input',remember);
       const save=button('Save temperature limit','button',()=>{const draft=state.drafts.get('manual-temperature')??saved;command({type:'fan-manual-limit',celsius:draft.automatic?null:draft.celsius});});
       automatic.disabled=save.disabled=state.busy||state.stale||!fan.capability.available||fan.mode==='manual';temperature.disabled=automatic.disabled||saved.automatic;
-      row.append(el('h3','','Manual fan temperature limit'),append(el('label','fan-explanation'),automatic,el('span','',` Use laptop thermal limit (${policy.defaultCelsius}°C)`)),append(el('div','fan-actions'),temperature,el('span','','°C'),save),el('p','fan-explanation','Choose 60–110°C. Applies to manual levels and manual Max; at the cutoff the worker requests firmware control. This does not raise CPU thermal limits. Return to firmware before changing this setting.'));
+      help.append(el('h3','','Manual fan temperature limit'),append(el('label','fan-explanation'),automatic,el('span','',` Use laptop thermal limit (${policy.defaultCelsius}°C)`)),append(el('div','fan-actions'),temperature,el('span','','°C'),save),el('p','','Choose 60–110°C. Applies to manual levels and manual Max; at the cutoff the worker requests firmware control. This does not raise CPU thermal limits. Return to firmware before changing this setting.'));
     }
+    row.append(help);
     box.append(row);
   }
-  const snapshot=state.snapshot, firmware=snapshot.fanProfiles?.limit;
-  const intelTarget=snapshot.cpuSteps?.hardware?.thermalTargetC;
-  const reported=firmware??(Number.isFinite(intelTarget)?{celsius:intelTarget,source:'Intel thermal target'}:null);
-  box.append(el('p','fan-explanation',`${snapshot.cpu.name}: ${reported?`reported ${reported.source} is ${reported.celsius} \u00b0C.`:'A firmware thermal target is unavailable; the default manual cutoff is 85°C.'} This is not a verified thermal-junction maximum. Saved curves reach Max at their own Max temperature, independently of the manual cutoff. Manual mode has no fixed total run-time limit while the connection and temperature checks pass.`));
+  box.append(el('p','fan-explanation','Saved curves use their own Max temperature and keep running with the app closed. Manual cutoffs are separate from the CPU thermal limit.'));
   return box;
 }
 function fanProfilesPanel() {
@@ -377,7 +383,7 @@ function fanProfilesPanel() {
   const keep=()=>{state.drafts.set('fan-profile',draft);refreshActions();};
   const current=fp.activeId?profiles.find(p=>p.id===fp.activeId)?.name:null;
   box.append(el('p','fan-explanation',`${running?(current?`Running "${current}".`:'Running a curve that differs from the saved profiles.'):actual?.mode==='manual'?'Manual fan control is active. Applying a profile will switch to its curve.':actual?.mode==='auto'?'Firmware currently controls the fan. Apply a profile to activate its curve.':'Current fan mode is unavailable.'} Applied curves keep running with the app closed and after a restart.`));
-  box.append(el('p','fan-explanation curve-notice',`Max mode (Level 10) is the fan's highest, unregulated speed. Set its start temperature below or at the firmware thermal limit of ${limit} \u00b0C (${fp.limit.source}). Level 7 must start below Max. Unlike manual mode, the service runs this curve while the window is minimized or closed.`));
+  box.append(el('p','fan-explanation',`Max is the highest, unregulated fan speed. Set it at or below ${limit} \u00b0C (${fp.limit.source}); level 7 must start earlier.`));
   const slotName=slot=>`EC temperature ${slot+1}`;
   if(fp.maskedSlots?.length) box.append(el('p','fan-explanation',`Adjusted for this curve: ${fp.maskedSlots.map(([slot,shift])=>`${slotName(slot)} reads ${shift} °C lower`).join(', ')}, because it stayed flat while the CPU temperature moved. If it heats up, it can still raise the fan, but later.`));
   if(fp.reapply) {
@@ -430,14 +436,17 @@ function fanProfilesPanel() {
     try { const saved=isUnchanged()?selected:await saveDraft(); if(saved)await command({type:'fan-profile-apply',id:saved.id}); }
     finally {state.profileApplying=false;render(true);}
   }); apply.disabled=disabled;
-  const remove=button('Delete','button',()=>command({type:'fan-profile-delete',id:draft.id})); remove.disabled=disabled||!draft.id;
+  const remove=button('Delete profile','button',()=>command({type:'fan-profile-delete',id:draft.id})); remove.disabled=disabled||!draft.id||draft.id===fp.activeId;
+  if(draft.id===fp.activeId)remove.title='Apply another profile or use firmware control before deleting this profile.';
+  const discard=button('Discard edits','button',()=>{state.drafts.delete('fan-profile');render(true);});discard.disabled=disabled||isUnchanged();
   const firmware=button('Use firmware control','button',()=>command({type:'fan-profile-firmware'})); firmware.disabled=disabled||!fp.curveSet; save.disabled=disabled;
   const progress=el('p','fan-explanation');progress.setAttribute('role','status');
   refreshActions=()=>{
     apply.textContent=state.profileApplying?'Applying…':isUnchanged()?'Apply profile':'Save and apply';
+    discard.disabled=disabled||isUnchanged();
     progress.textContent=state.profileApplying?'Applying profile: handing cooling to firmware, reconnecting the engine, and checking the running curve…':!isUnchanged()?'Edits are not active yet. Save profile stores them; Save and apply also activates them.':'Apply profile activates this saved curve. Firmware controls cooling briefly while the engine reconnects.';
   };
-  refreshActions();append(box,append(el('div','fan-actions'),apply,save,remove,firmware),progress);
+  refreshActions();append(box,append(el('div','fan-actions'),apply,save,discard,remove,firmware),progress);
   return box;
 }
 // Optional. Everything else works without it.
@@ -462,7 +471,7 @@ function fanSpeedsPanel() {
 function gpuPanels() {
   const boxes=[];
   for (const gpu of state.snapshot.gpus) {
-    const box=panel(gpu.name,'gpu',`${gpu.vendor} · ${gpu.id}`);
+    const box=panel(gpu.name,'gpu',`${gpu.vendor} graphics`);
     const grid=el('div','detail-grid');
     append(grid,metric('GPU temperature','temperature',gpu.temperature,'°C','Core temperature',null,true),metric('GPU utilization','gpu',gpu.load,'%','Graphics load'),metric('Core clock','sensors',gpu.clock,'MHz','Current frequency'));
     const inside=el('div','big-info'); inside.append(grid); box.append(inside);
@@ -529,7 +538,7 @@ function sensorTable() {
   trackSensorRanges();
   const root=el('div','sensor-tree'), filter=state.search.toLowerCase();
   const sensors=state.snapshot.sensors.filter(s=>`${s.name} ${s.group} ${s.id} ${sensorDeviceName(s)} ${s.type}`.toLowerCase().includes(filter));
-  if(!sensors.length){ root.append(el('p','empty-note',filter?'No matching sensors.':'No sensor bridge readings yet. Open Setup to connect the native bridge.')); return root; }
+  if(!sensors.length){ root.append(el('p','empty-note',filter?'No matching sensors.':'No sensor readings yet. Open Settings to connect hardware access.')); return root; }
   root.append(append(el('div','sensor-row sensor-head'),el('span','','Sensor'),el('span','sensor-number','Value'),el('span','sensor-number','Min'),el('span','sensor-number','Max')));
   const devices=new Map();
   for(const sensor of sensors){ const name=sensorDeviceName(sensor), device=devices.get(name)??{group:sensor.group,sensors:[]}; device.sensors.push(sensor); devices.set(name,device); }
@@ -550,7 +559,9 @@ function sensorTable() {
 }
 function sensorsPanel() {
   const search=el('input','search'); search.type='search'; search.placeholder='Find a sensor…'; search.value=state.search; search.setAttribute('aria-label','Find a sensor');
-  const box=panel('Sensor explorer','sensors',`${state.snapshot.sensors.length} exposed sensors`,search), wrapper=el('div','table-scroll');
+  const reset=button('Reset Min/Max','button',()=>{state.sensorRanges=new Map();trackSensorRanges();render(true);toast('Session minimum and maximum readings reset.');});reset.title='Resets this session only; recorded history is kept.';
+  const tools=append(el('div','sensor-tools'),search,reset);
+  const box=panel('Sensor explorer','sensors',`${state.snapshot.sensors.length} readings · session minimum and maximum`,tools), wrapper=el('div','table-scroll');wrapper.id='sensor-readings';
   search.addEventListener('input',()=>{state.search=search.value; wrapper.replaceChildren(sensorTable());});
   wrapper.append(sensorTable()); box.append(wrapper); return box;
 }
@@ -558,7 +569,7 @@ function activityPanel() {
   const box=panel('Control history','activity','Requested changes, read-back results and errors · stored locally');
   if (!state.activity.length) box.append(el('div','empty-state','Your control changes will appear here. No settings are applied automatically at startup.'));
   for (const event of state.activity) {
-    const c=event.command, title=c.type==='fan-manual-limit'?('Manual fan cutoff · '+(c.celsius===null?'Laptop default':c.celsius+' °C')):c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`;
+    const c=event.command, profileTitle=({'fan-profile-save':'Save fan profile','fan-profile-apply':'Apply fan profile','fan-profile-delete':'Delete fan profile','fan-profile-firmware':'Use firmware fan control'})[c.type], title=profileTitle||(c.type==='fan-manual-limit'?('Manual fan cutoff · '+(c.celsius===null?'Laptop default':c.celsius+' °C')):c.type==='ryzen-tune'?('Ryzen SMU · '+c.setting+' · '+(c.restore?'restore baseline':c.value)):c.type==='cpu-boost'?`CPU boost · ${c.source.toUpperCase()} · ${c.enabled?'enabled':'disabled'}`:c.type==='cpu-max-boost'?`Maximum boost · ${c.source.toUpperCase()} · ${c.enabled?'on':'off'}`:c.type==='cpu-step'?`CPU speed step · ${c.source.toUpperCase()} · ${c.restore?'restore earlier limits':c.mhz?c.mhz+' MHz':'no limit'}`:c.type==='gpu-boost'?`GPU boost · ${c.enabled?'enabled':'disabled'}`:`Fan control · ${c.mode}${c.mode==='manual'?` · ${c.level!==undefined?'level '+c.level:c.percent+'%'}`:''}`);
     append(box,append(el('div',`event ${event.status}`),el('span','event-indicator'),append(el('div','event-info'),el('div','event-title',title),el('div','event-detail',`${event.status.toUpperCase()} · ${event.detail||'Awaiting verification'}`)),el('time','',new Date(event.requested_at).toLocaleTimeString())));
   }
   return box;
@@ -578,6 +589,8 @@ function compatibilityPanel() {
 }
 function render(force=false) {
   const s=state.snapshot;
+  const operation=$('#operation-status');operation.hidden=!state.busy&&!state.profileApplying;operation.textContent=state.profileApplying?'Applying fan profile…':state.pendingCommand?.restore?'Restoring baseline…':'Applying changes…';
+  $('#content').setAttribute('aria-busy',String(!!state.busy||!!state.profileApplying));$('#refresh-button').disabled=!!state.busy;
   $('#mode-badge').textContent=state.mode==='demo'?'SIMULATED DEMO':'LIVE HARDWARE'; $('#mode-badge').classList.toggle('demo',state.mode==='demo');
   $('#connection').replaceChildren(el('span','status-dot'),document.createTextNode(state.error?'Disconnected':state.stale?'Waiting for data':'Connected'));
   $('#connection').classList.toggle('status-failed',!!state.error||state.stale);
@@ -600,7 +613,7 @@ function render(force=false) {
       stepsPanel(),boostPanel(true),...(showCpuTuning(s)?[advancedCpuTuning()]:[]),chart());
   } else if(state.view==='gpu') { parts.push(...gpuPanels(),chart()); }
   else if(state.view==='advanced') parts.push(fanSpeedsPanel());
-  else if(state.view==='fan') { parts.push(metrics(),fanPanel(),fanProfilesPanel(),append(panel('Cooling behavior','fan'),el('div','big-info','CPU and integrated GPU may share a physical fan. Only exposed fan channels appear; an independent GPU fan is never invented. TPFanCtrl2 uses direct levels 1–7; LibreHardwareMonitor controllers use percentages. RPM is read from the hardware tachometer, never estimated from the requested speed. Enable the optional TPFanCtrl2 service adapter in Setup for supported ThinkPads.'))); }
+  else if(state.view==='fan') { parts.push(metrics(),fanPanel(),fanProfilesPanel()); }
   else if(state.view==='sensors') parts.push(sensorsPanel());
   else parts.push(activityPanel(),compatibilityPanel());
   const focusLabel=content.contains(document.activeElement)?document.activeElement.getAttribute('aria-label'):null;
@@ -630,6 +643,7 @@ const exitApplication=async()=>{
   } catch(e) { toast(e.message,true); }
 };
 $('#stop-service').addEventListener('click',exitApplication);
+$('#dismiss-toast').addEventListener('click',()=>{clearTimeout(toastTimer);$('#toast').hidden=true;});
 async function refresh() {
   if(state.stopped) return;
   if (refreshPromise) return refreshPromise;
@@ -641,7 +655,12 @@ async function refresh() {
       // Only a successfully connected UI can renew the manual fan lease.
       if(window.thinkpadDesktop!==true)await api('lease',{active:!state.stale});
     } catch(e) { state.error=e.message; state.stale=true; }
-    finally { refreshPromise=null; render(); }
+    finally {
+      refreshPromise=null;
+      const readings=$('#sensor-readings');
+      if(state.view==='sensors'&&readings&&document.activeElement?.getAttribute('aria-label')==='Find a sensor')readings.replaceChildren(sensorTable());
+      render();
+    }
   })(); return refreshPromise;
 }
 async function start() {

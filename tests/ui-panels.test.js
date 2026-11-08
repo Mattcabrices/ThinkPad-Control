@@ -200,10 +200,32 @@ test('profile Apply skips redundant saves, saves edits first, and never applies 
   assert.match(firmwareNodes.map(n=>n.text??'').join(' '),/Firmware currently controls the fan/);
   assert.doesNotMatch(firmwareNodes.map(n=>n.text??'').join(' '),/Running "Server inactive"/);
   state.snapshot.fans[0].mode='curve';
+  assert.equal(nodes.find(n=>n.text==='Delete profile').disabled,true,'The running profile cannot be deleted');
+  const discard=nodes.find(n=>n.text==='Discard edits');assert.equal(discard.disabled,true);
+  const initialSlider=nodes.filter(n=>n.type==='range')[7];initialSlider.value='82';initialSlider.events.input();
+  assert.equal(discard.disabled,false);discard.action();assert.equal(state.drafts.has('fan-profile'),false);
+  nodes=walk(vm.runInContext('fanProfilesPanel()',context));
   await nodes.find(n=>n.text==='Apply profile').action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-apply']);
   commands.length=0;nodes=walk(vm.runInContext('fanProfilesPanel()',context));const apply=nodes.find(n=>n.text==='Apply profile');
   const slider=nodes.filter(n=>n.type==='range')[7];slider.value='84';slider.events.input();
   assert.equal(apply.textContent,'Save and apply');await apply.action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-save','fan-profile-apply']);
   commands.length=0;nodes=walk(vm.runInContext('fanProfilesPanel()',context));const edited=nodes.filter(n=>n.type==='range')[7];edited.value='83';edited.events.input();fail=true;
   await nodes.find(n=>n.text==='Apply profile').action();assert.deepEqual(commands.map(c=>c.type),['fan-profile-save']);assert.equal(state.profileApplying,false);
+});
+
+test('fan safety disclosure stays open across telemetry renders without changing controls',async()=>{
+  const snapshot=await new DemoProvider().snapshot(),state={snapshot,drafts:new Map(),busy:false,stale:false};
+  const context=vm.createContext({state,Map,Number,Math,el:(tag,cls,text)=>({...node(tag,text),events:{},addEventListener(type,fn){this.events[type]=fn;}}),panel:()=>node('panel'),append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},button:text=>node('button',text),fmt:String,command(){throw Error('Opening help must not change cooling');}});
+  vm.runInContext(component('fanPanel','fanProfilesPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)];let help=walk(vm.runInContext('fanPanel()',context)).find(n=>n.tag==='details');
+  assert.equal(help.open,false);help.open=true;help.events.toggle();
+  help=walk(vm.runInContext('fanPanel()',context)).find(n=>n.tag==='details');assert.equal(help.open,true);
+});
+
+test('activity uses descriptive fan profile actions instead of an undefined fan mode',()=>{
+  const state={activity:['fan-profile-save','fan-profile-apply','fan-profile-delete','fan-profile-firmware'].map(type=>({command:{type,id:'default-2'},status:'applied',detail:'Verified',requested_at:new Date().toISOString()}))};
+  const context=vm.createContext({state,Date,el:(tag,cls,text)=>node(tag,text),panel:()=>node('panel'),append:(p,...children)=>{p.append(...children);return p;}});
+  vm.runInContext(component('activityPanel','compatibilityPanel'),context);
+  const textOf=n=>[n.text??'',...n.children.map(textOf)].join(' '),text=textOf(vm.runInContext('activityPanel()',context));
+  assert.match(text,/Save fan profile/);assert.match(text,/Apply fan profile/);assert.match(text,/Use firmware fan control/);assert.doesNotMatch(text,/undefined/);
 });

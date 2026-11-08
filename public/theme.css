@@ -294,3 +294,32 @@ pre { padding: 5px 7px; border-radius: var(--radius); background: var(--surface-
   .search { width: 120px; }
   .statusbar span:last-child { display: none; }
 }
+
+/* Beta polish: compact controls, stable numbers and help on demand. */
+.control-help {margin:6px var(--pad);padding:6px 0;border-top:1px solid var(--border-soft);font-size:var(--text-small);color:var(--text-muted)}
+.control-help>summary {cursor:pointer;color:var(--text);font-weight:500;line-height:1.5}
+.control-help[open]>summary {margin-bottom:6px}
+.control-help p {margin:5px 0;line-height:1.45}
+.control-help h3 {font-size:var(--text-small);margin:10px 0 6px;font-weight:600;color:var(--text)}
+.fan-control>.control-help {margin-left:0;margin-right:0;margin-bottom:0}
+.control-help .fan-actions {margin:6px 0;align-items:center}
+.fan-explanation {line-height:1.45}
+.fan-actions {gap:6px;align-items:center}
+.button {min-height:26px}
+.profile-name {border-radius:var(--radius);padding:5px 8px;border-color:var(--border);background:var(--surface);font-size:var(--text-size)}
+.tuning-readings {display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:4px;font-size:var(--text-small);font-variant-numeric:tabular-nums}
+.tuning-readings strong {font-family:var(--font-mono);font-size:var(--text-small);font-weight:500;white-space:nowrap}
+.reading-label {color:var(--text-muted)}
+.ryzen-input {min-height:28px;text-align:right;font-variant-numeric:tabular-nums}
+.slider-output,.sensor-number,.speed-row strong {font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.sensor-tools {display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sensor-tools .search {min-width:150px}
+.event-detail {overflow-wrap:anywhere}
+#toast {display:flex;align-items:flex-start;gap:10px;max-width:min(520px,calc(100vw - 30px))}
+#toast[hidden] {display:none}
+#toast-message {flex:1;padding:3px 0}
+#toast .icon-button {color:inherit;flex:none;min-width:24px;line-height:24px;border-radius:var(--radius)}
+#toast .icon-button:hover {background:rgba(127,127,127,.25)}
+#operation-status {color:var(--accent);margin-left:auto;font-weight:500}
+.control-panel:focus-within {border-color:var(--border)}
+@media(max-width:640px) {.panel-heading:has(.sensor-tools){align-items:flex-start;gap:8px;flex-wrap:wrap}.sensor-tools{width:100%}.sensor-tools .search{flex:1;min-width:0}.profile-top .mode-select{max-width:100%;flex:1}.fan-actions .button{white-space:normal}.tuning-readings{gap:5px 12px}}.boost-section-label {padding:6px var(--pad);margin:0;border-top:1px solid var(--border-soft);background:var(--surface-alt);font-size:var(--text-small);line-height:1.45}

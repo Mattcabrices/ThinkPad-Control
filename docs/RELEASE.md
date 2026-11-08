@@ -11,6 +11,18 @@ upstream licenses, credits and matching source archives.
 
 ### Unreleased UX fixes
 
+The GUI keeps the compact hardware-monitor layout, with aligned numeric readings
+and controls, shorter visible guidance, and expandable boost/fan safety details.
+Ryzen rows show Current and Baseline values with units. Fan curves offer Discard
+edits, prevent deletion of the active profile, and distinguish Apply profile from
+Save and apply. The status bar reports pending work; errors remain visible until
+dismissed or replaced, and notifications have a dismiss button. Sensor explorer
+adds Reset Min/Max for this session without deleting recorded history, and keeps
+readings refreshing while the search box is focused. Settings and fan-history
+labels are clearer. Layout and restore/profile flows were checked using isolated
+demo data, including the desktop app's minimum 840-by-640 window size. This GUI
+pass does not reinstall the app or change physical hardware settings.
+
 Successful Ryzen baseline restores replace the corresponding input with the
 verified firmware read-back. Baselines come from the laptop when the hardware
 worker connects; they are not hardcoded factory wattages. Failed restores retain

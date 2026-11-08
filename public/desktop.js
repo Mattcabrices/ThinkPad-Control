@@ -13,8 +13,9 @@ export function attachDesktop({el,button,state,onExit}) {
   document.querySelector('.top-status').prepend(enable);
   const dialog=document.querySelector('#setup-dialog');
   const top=el('div','dialog-top');
-  top.append(el('span','eyebrow','DESKTOP SETTINGS'),button('×','icon-button',()=>dialog.close()));
-  const h=el('h2','','Setup');
+  const close=button('×','icon-button',()=>dialog.close());close.setAttribute('aria-label','Close settings');
+  top.append(el('span','eyebrow','DESKTOP SETTINGS'),close);
+  const h=el('h2','','Settings');h.id='settings-heading';dialog.setAttribute('aria-labelledby','settings-heading');
   const description=el('p','','Hardware access connects by itself when the app opens. If it fails, or after moving the app, repair it here. Repair needs one UAC approval.');
   const diagnosis=el('p');diagnosis.id='driver-status';
   const engine=el('p');engine.id='engine-status';
