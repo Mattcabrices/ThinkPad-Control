@@ -53,7 +53,9 @@ internal sealed partial class MainWindow : Form
         hardwareAccess=new ToolStripMenuItem("Enable hardware access (UAC)…",null,async(_,_)=>await EnableHardware()){Enabled=!demo};
         hardwareMenu.DropDownItems.Add(hardwareAccess);
         hardwareMenu.DropDownItems.Add("Return fans to firmware",null,async(_,_)=>await TrayRestore());
-        menuBar.Items.Add(appMenu);menuBar.Items.Add(hardwareMenu);Controls.Add(menuBar);menuBar.BringToFront();MainMenuStrip=menuBar;
+        menuBar.Items.Add(appMenu);menuBar.Items.Add(hardwareMenu);Controls.Add(menuBar);MainMenuStrip=menuBar;
+        // Docking runs in reverse z-order: reserve menu/status space before the fill viewport.
+        Controls.SetChildIndex(web,0);
         var menu=new ContextMenuStrip();
         menu.Items.Add("Open ThinkPad Control",null,(_,_)=>ShowWindow());
         elevate=new ToolStripMenuItem("Enable hardware access (UAC)…",null,async(_,_)=>await EnableHardware()) {Enabled=!demo};menu.Items.Add(elevate);

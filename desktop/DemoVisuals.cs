@@ -36,6 +36,8 @@ internal sealed partial class MainWindow
     {
         SmokeTrace("visual-"+layout+"-"+view+(detail?"-detail":""));
         await Task.Delay(250);
+        if(MainMenuStrip is {Visible:true} menu&&web.Top<menu.Bottom)
+            throw new InvalidOperationException($"Native menu overlaps the web viewport: menu bottom {menu.Bottom}, viewport top {web.Top} ({layout}/{view}).");
         var raw=await web.CoreWebView2.ExecuteScriptAsync("(()=>{const root=document.documentElement,content=document.querySelector('#content'),edge=content.getBoundingClientRect().right;return {simulated:document.querySelector('#mode-badge')?.textContent==='SIMULATED DEMO',viewportWidth:innerWidth,viewportHeight:innerHeight,scrollWidth:root.scrollWidth,clientWidth:root.clientWidth,contentWidth:content.clientWidth,contentScroll:content.scrollWidth,overflowing:[...content.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>edge+1).slice(0,12).map(n=>({tag:n.tagName,cls:n.className?.baseVal??n.className,text:n.textContent.slice(0,80)}))};})()");
         using var document=JsonDocument.Parse(raw);var reading=document.RootElement;
         if(!reading.GetProperty("simulated").GetBoolean())throw new InvalidOperationException("Screenshot target is not a simulated demo.");

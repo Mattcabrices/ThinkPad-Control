@@ -1,5 +1,25 @@
 # Release validation
 
+## Alpha.30 installed check — November 9, 2026
+
+The owner approved upgrading the T14s Gen 2 Ryzen 5 PRO 5650U to
+`0.4.0-alpha.30+b65740cbe6f31962b30bce5033633d5cd4f4513a` and a short fan check.
+Setup and automatic hardware setup returned success, with no reboot. All 113
+immutable installed payload files matched the tested manifest; the fan INI was
+preserved exactly. CPU/APU temperatures and measured RPM connected automatically.
+
+Manual Max remained owned and reported approximately 4,800 RPM after 12 seconds.
+Handover to the saved curve released manual ownership. The original custom curve,
+saved profiles, manual cutoff and starting firmware fan mode were then restored.
+Final INI bytes, boost policies, CPU speed caps and Ryzen limits matched the
+starting capture. No Turbo, CPU tuning, stress, suspend or reboot test was run.
+
+The owner then reported clipped Overview navigation. A native-window regression
+reproduced a menu bottom at 36 pixels with the WebView starting at zero. Alpha.31
+corrects docking order; isolated Ryzen/Intel checks passed 40 demo captures with
+native menu/viewport overlap assertions. This is not a claim of installed
+alpha.31 validation or broader model compatibility.
+
 ## Alpha.30 software verification — November 9, 2026
 
 Application and bootstrap code at `dec460929a2ba61b02648c2ef64cc6e12dfbc6f6`
