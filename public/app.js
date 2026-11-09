@@ -696,9 +696,14 @@ async function refresh() {
   })(); return refreshPromise;
 }
 async function start() {
-  try { const session=await api('session'); state.token=session.token; state.mode=session.mode; attachDesktop({el,button,state,onExit:exitApplication});await refresh(); }
+  let desktopAttached=false;
+  const connectSession=async()=>{
+    const session=await api('session'); state.token=session.token; state.mode=session.mode;
+    if(!desktopAttached){attachDesktop({el,button,state,onExit:exitApplication});desktopAttached=true;}
+  };
+  try { await connectSession();await refresh(); }
   catch(e) { state.error=e.message; render(); }
-  const tick=async()=>{ if(state.stopped)return; if(!state.token) { try { const session=await api('session'); state.token=session.token; state.mode=session.mode; } catch{} } await refresh(); setTimeout(tick,3000); }; setTimeout(tick,3000);
+  const tick=async()=>{ if(state.stopped)return; if(!state.token) { try { await connectSession(); } catch{} } await refresh(); setTimeout(tick,3000); }; setTimeout(tick,3000);
 }
 start();
 

@@ -7,6 +7,22 @@ const source=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 function component(name,next){return source.slice(source.indexOf(`function ${name}()`),source.indexOf(`function ${next}()`));}
 function node(tag,text){return {tag,text,children:[],classList:{add(){}},append(...children){this.children.push(...children);},setAttribute(){},addEventListener(){}};}
 
+test('startup retries initialize desktop controls after an initial outage and never attach twice after token renewal',async()=>{
+  const state={token:null,mode:'live',stopped:false},ticks=[];
+  let sessions=0,attachments=0,refreshes=0,renders=0;
+  const context=vm.createContext({state,el(){},button(){},exitApplication(){},
+    api:async path=>{assert.equal(path,'session');if(++sessions===1)throw Error('Temporarily offline');return {token:`token-${sessions}`,mode:'demo'};},
+    attachDesktop:args=>{assert.equal(args.state.mode,'demo','Know demo mode before creating hardware controls');assert.equal(args.state.token,'token-2');attachments++;},
+    refresh:async()=>{refreshes++;},render(){renders++;},
+    setTimeout(fn,delay){assert.equal(delay,3000);ticks.push(fn);}});
+  vm.runInContext(source.slice(source.indexOf('async function start()'),source.indexOf('\nstart();')),context);
+  await vm.runInContext('start()',context);
+  assert.equal(attachments,0);assert.equal(renders,1);assert.equal(ticks.length,1);
+  await ticks.shift()();assert.equal(attachments,1);assert.equal(refreshes,1);assert.equal(state.token,'token-2');
+  state.token=null;await ticks.shift()();assert.equal(state.token,'token-3');assert.equal(attachments,1);assert.equal(refreshes,2);
+  state.stopped=true;await ticks.shift()();assert.equal(ticks.length,0);assert.equal(sessions,3);
+});
+
 test('missing hardware views open Settings without issuing commands; an empty sensor search stays a search result',()=>{
   let opened=0;
   const state={snapshot:{fans:[],gpus:[],sensors:[]},search:'',drafts:new Map()};
