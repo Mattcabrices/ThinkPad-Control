@@ -557,8 +557,9 @@ function foldSensors(key,sensors,forceOpen) {
 }
 function sensorTable() {
   trackSensorRanges();
-  const root=el('div','sensor-tree'), filter=state.search.toLowerCase();
-  const sensors=state.snapshot.sensors.filter(s=>`${s.name} ${s.group} ${s.id} ${sensorDeviceName(s)} ${s.type}`.toLowerCase().includes(filter));
+  const root=el('div','sensor-tree'), filter=state.search.trim().toLowerCase();
+  const sensors=state.snapshot.sensors.filter(s=>`${s.name} ${s.group} ${s.id} ${sensorDeviceName(s)} ${s.type} ${s.unit??''} ${s.source??''}`.toLowerCase().includes(filter));
+  if(filter) root.append(el('p','sensor-match-count',`${sensors.length} of ${state.snapshot.sensors.length} sensors match`));
   if(!sensors.length){ root.append(el('p','empty-note',filter?'No matching sensors.':'No sensor readings yet. Open Settings to connect hardware access.')); return root; }
   root.append(append(el('div','sensor-row sensor-head'),el('span','','Sensor'),el('span','sensor-number','Value'),el('span','sensor-number','Min'),el('span','sensor-number','Max')));
   const devices=new Map();
@@ -584,6 +585,7 @@ function sensorsPanel() {
   const tools=append(el('div','sensor-tools'),search,reset);
   const box=panel('Sensor explorer','sensors',`${state.snapshot.sensors.length} readings · session minimum and maximum`,tools), wrapper=el('div','table-scroll');wrapper.id='sensor-readings';
   search.addEventListener('input',()=>{state.search=search.value; wrapper.replaceChildren(sensorTable());});
+  search.addEventListener('keydown',event=>{if(event.key==='Escape'&&search.value){event.preventDefault();event.stopPropagation();search.value='';state.search='';wrapper.replaceChildren(sensorTable());}});
   wrapper.append(sensorTable()); box.append(wrapper); return box;
 }
 function activityPanel() {

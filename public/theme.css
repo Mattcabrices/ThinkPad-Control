@@ -314,6 +314,7 @@ pre { padding: 5px 7px; border-radius: var(--radius); background: var(--surface-
 .slider-output,.sensor-number,.speed-row strong {font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 .sensor-tools {display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .sensor-tools .search {min-width:150px}
+.sensor-match-count {margin:0;padding:5px var(--pad);color:var(--text-muted);font-size:var(--text-small);border-bottom:1px solid var(--border-soft)}
 .event-detail {overflow-wrap:anywhere}
 #toast {display:flex;align-items:flex-start;gap:10px;max-width:min(520px,calc(100vw - 30px))}
 #toast[hidden] {display:none}

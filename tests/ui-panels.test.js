@@ -256,6 +256,27 @@ test('telemetry refresh updates filtered sensor readings while search stays focu
   assert.match(textOf(readings.tree),/73\.4/);assert.doesNotMatch(textOf(readings.tree),/GPU core/);assert.equal(state.search,'CPU');assert.equal(renders,1);
 });
 
+test('sensor search matches trimmed source and units, reports counts, and Escape clears without writes or lost ranges',async()=>{
+  const snapshot=await new DemoProvider().snapshot();
+  snapshot.sensors=[{id:'cpu/temperature',name:'Package',group:'CPU',type:'Temperature',value:55,unit:'°C',source:'Fixture adapter'},
+    {id:'cpu/power',name:'Package',group:'CPU',type:'Power',value:18,unit:'W',source:'Other adapter'}];
+  const state={snapshot,search:'  FIXTURE adapter  ',sensorRanges:new Map([['cpu/temperature',{min:40,max:60}]]),history:[{at:'earlier'}]},history=state.history;
+  const make=(tag,cls,text)=>({...node(tag,text),events:{},addEventListener(type,fn){this.events[type]=fn;},replaceChildren(...children){this.children=children;}});
+  const context=vm.createContext({state,Map,Set,Number,Math,el:make,panel:(title,icon,subtitle,extra)=>{const p=node('panel',title);p.append(extra);return p;},append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},button:(text,cls,action)=>({...node('button',text),action}),fmt:String,command(){throw Error('Searching must not change hardware');}});
+  vm.runInContext(source.slice(source.indexOf('const SENSOR_CATEGORIES='),source.indexOf('function activityPanel()')),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],textOf=n=>walk(n).map(n=>n.text??'').join(' ');
+  let tree=vm.runInContext('sensorsPanel()',context),nodes=walk(tree),wrapper=nodes.find(n=>n.id==='sensor-readings'),search=nodes.find(n=>n.tag==='input');
+  assert.match(textOf(wrapper),/1 of 2 sensors match/);assert.match(textOf(wrapper),/55 °C/);assert.doesNotMatch(textOf(wrapper),/18 W/);
+  search.value=' °c ';search.events.input();assert.match(textOf(wrapper),/1 of 2 sensors match/);
+  search.value='missing';search.events.input();assert.match(textOf(wrapper),/0 of 2 sensors match/);assert.match(textOf(wrapper),/No matching sensors/);
+  let prevented=false,stopped=false;search.events.keydown({key:'Escape',preventDefault(){prevented=true;},stopPropagation(){stopped=true;}});
+  assert.equal(prevented,true);assert.equal(stopped,true);assert.equal(search.value,'');assert.equal(state.search,'');
+  assert.match(textOf(wrapper),/55 °C/);assert.match(textOf(wrapper),/18 W/);assert.doesNotMatch(textOf(wrapper),/sensors match/);
+  search.value='   ';search.events.input();assert.doesNotMatch(textOf(wrapper),/No matching sensors|sensors match/);
+  search.events.keydown({key:'Enter',preventDefault(){throw Error('Other keys must keep their default behavior');}});
+  assert.equal(state.sensorRanges.get('cpu/temperature').min,40);assert.equal(state.sensorRanges.get('cpu/temperature').max,60);assert.equal(state.history,history);
+});
+
 test('Turbo panel offers restore after interruption and displays read-only limits without promising more watts',()=>{
   const state={snapshot:{turbo:{available:true,source:'ac',targets:[{key:'fastWatts',value:40}],notes:['Sustained power: read-only or unavailable.']}},busy:false,stale:false},commands=[];
   const context=vm.createContext({state,el:(tag,cls,text)=>node(tag,text),panel:()=>node('panel'),append:(p,...children)=>{p.append(...children);return p;},button:(text,cls,action)=>({...node('button',text),action}),fmt:String,command:c=>commands.push(c)});
