@@ -4,7 +4,21 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DemoProvider, WindowsProvider, validateCommand } from '../src/providers.js';
-import { EcSlotWatch, FanProfiles, defaultProfiles, engineRows, firmwareThermalLimit, validateCurve } from '../src/fan-curves.js';
+import { EcSlotWatch, FanProfiles, defaultProfiles, engineRows, decodeEngineCurve, firmwareThermalLimit, validateCurve } from '../src/fan-curves.js';
+
+test('custom engine curve capture round-trips exact supported rows and refuses unknown table shapes',()=>{
+  const levels=[45,51,56,61,66,72,78];
+  for(const fanOff of [true,false]){
+    const rows=engineRows(levels,fanOff,86,85),decoded=decodeEngineCurve(rows,86);
+    assert.deepEqual(decoded,{levels:fanOff?levels:[30,...levels.slice(1)],fanOff,maxTemp:85});
+    assert.deepEqual(engineRows(decoded.levels,decoded.fanOff,86,decoded.maxTemp),rows);
+  }
+  const valid=engineRows(levels,true,86,86);
+  const changed=(i,value)=>valid.map((row,index)=>index===i?value:row);
+  for(const rows of [null,[[0,128]],valid.slice(1),changed(0,[39,0]),changed(2,[51,3]),changed(2,[44,2]),changed(8,[87,64]),changed(8,[86,128]),changed(1,[45,1,0]),changed(1,['45',1])]){
+    assert.equal(decodeEngineCurve(rows,86),null,JSON.stringify(rows));
+  }
+});
 
 const ryzen = limit => ({ ryzen: { available: true, current: { temperatureLimit: limit }, baseline: { temperatureLimit: limit } } });
 const levels = [55, 61, 66, 71, 76, 81, 85];

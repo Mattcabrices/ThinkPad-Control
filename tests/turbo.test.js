@@ -7,6 +7,7 @@ import {DemoProvider,WindowsProvider,validateCommand} from '../src/providers.js'
 import {TurboController,planTurbo} from '../src/turbo.js';
 import {createApp} from '../src/server.js';
 import {Store} from '../src/store.js';
+import {engineRows,decodeEngineCurve} from '../src/fan-curves.js';
 
 function fixture(profile='ryzen'){
   const p=new DemoProvider(profile);p.maxFrequency.ac=2300;p.maxFrequencyClass1.ac=1700;
@@ -99,10 +100,52 @@ test('a different device cannot consume another recovery record',async()=>{
   p.snapshot=async()=>{const s=await original();s.cpu.name='Different CPU';return s;};await assert.rejects(turbo.command('restore'),/device differs/);assert.equal(commands.length,count);
 });
 
-test('unavailable policy, unknown source, high temperatures, custom curves and manual ownership refuse before writes',async()=>{
+test('unavailable policy, unknown source, high temperatures, unrecognized curves and manual ownership refuse before writes',async()=>{
   for(const change of [s=>s.capabilities.cpuMaxBoost.available=false,s=>s.powerSource='Unknown',s=>s.cpu.temperature=100,s=>s.fans[0].mode='manual',s=>{s.fans[0].mode='curve';s.fanProfiles.activeId=null;},s=>s.cpuSteps.policy.epp.ac=null,s=>s.cpuSteps.maxBoostRecovery={ac:true}]){
     const {p,turbo,commands}=fixture(),snapshot=p.snapshot.bind(p);p.snapshot=async()=>{const s=await snapshot();change(s);return s;};await assert.rejects(turbo.command('enable'));assert.equal(commands.length,0);
   }
+});
+
+function customCurveFixture(){
+  const f=fixture(),levels=[45,51,56,61,66,72,78];
+  f.p.ryzenLimits.temperatureLimit=86;
+  f.p.ryzenBaseline.temperatureLimit=86;
+  f.p.fanProfiles.save({id:'default-2',name:'Server inactive',levels,fanOff:true,maxTemp:85},86);
+  f.p.fanCurve={active:2,rows:engineRows(levels,true,86,86),masks:[[11,30]]};f.p.fanMode='curve';
+  return f;
+}
+test('an unmatched custom curve survives Turbo and restart recovery without editing saved profiles',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'thinkpad-custom-turbo-'));
+  try{
+    const {p,commands}=customCurveFixture(),before=await p.snapshot(),rows=structuredClone(p.fanCurve.rows),profiles=structuredClone(before.fanProfiles.profiles);
+    assert.equal(before.fanProfiles.activeId,null);assert.equal(before.fanProfiles.customCurve,true);
+    const file=join(dir,'recovery.json'),turbo=new TurboController(p,{file});
+    assert.equal(turbo.view(before).available,true);await turbo.command('enable');
+    const restarted=new TurboController(p,{file});await restarted.command('restore');
+    const after=await p.snapshot();assert.deepEqual(p.fanCurve.rows,rows);assert.deepEqual(p.fanCurve.masks,[[11,30]]);
+    assert.deepEqual(after.fanProfiles.profiles,profiles);assert.equal(after.fanProfiles.activeId,null);assert.equal(after.fans[0].mode,'curve');
+    assert.deepEqual(captured(after),captured(before));assert.equal(restarted.saved,null);
+    assert.ok(!commands.some(c=>c.type.startsWith('fan-profile')),'Recovery must not create or edit saved profiles');
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('custom curve rollback restores exact rows after activation failure; wrong curve read-back retains recovery for retry',async()=>{
+  const {p,turbo}=customCurveFixture(),rows=structuredClone(p.fanCurve.rows),originalCommand=p.command.bind(p);
+  p.command=async c=>{const r=await originalCommand(c);if(c.setting==='fastWatts'&&c.value===40)throw Error('Injected wattage failure');return r;};
+  await assert.rejects(turbo.command('enable'),/Previous settings restored/);assert.deepEqual(p.fanCurve.rows,rows);assert.equal(turbo.saved,null);
+  p.command=originalCommand;await turbo.command('enable');const restore=p.restoreTurboCurve.bind(p);
+  p.restoreTurboCurve=async saved=>{await restore(saved);p.fanCurve.rows.at(-1)[0]--;};
+  await assert.rejects(turbo.command('restore'),/curve could not be verified/);assert.ok(turbo.saved);
+  p.restoreTurboCurve=restore;await turbo.command('restore');assert.deepEqual(p.fanCurve.rows,rows);assert.equal(turbo.saved,null);
+});
+test('Windows custom curve recovery verifies actual worker thresholds instead of requiring a saved profile ID',async()=>{
+  const rows=engineRows([45,51,56,61,66,72,78],true,86,86),masks=[[11,30]],p=new WindowsProvider({platform:'win32',runner:async()=> '{}'});
+  let observed=rows;
+  p.bridge={request:async(op,args)=>{assert.equal(op,'fan-curve');assert.deepEqual(args.rows,rows);assert.deepEqual(args.masks,masks);}};
+  p.snapshot=async()=>({fans:[{id:'tpfc/cooling-system',mode:'curve'}],fanProfiles:{activeId:null,curveSet:true,limit:{celsius:86},currentCurve:decodeEngineCurve(observed,86),maskedSlots:masks}});
+  const saved={id:'tpfc/cooling-system',mode:'curve',profile:{id:'captured-curve',...decodeEngineCurve(rows,86)},limit:86,masks};
+  await p.restoreTurboCurve(saved);
+  observed=engineRows([45,51,56,61,66,72,78],true,86,85);
+  await assert.rejects(p.restoreTurboCurve(saved),/read-back did not match/);
 });
 
 test('authenticated Turbo API audits activation/restoration and blocks conflicting controls while retaining emergency firmware release',async t=>{

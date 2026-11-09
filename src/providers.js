@@ -9,7 +9,7 @@ import { EcSlotWatch, FanProfiles, engineRows } from './fan-curves.js';
 import { FanLevelSpeeds, FULL_SPEED_LEVEL } from './fan-levels.js';
 import { buildCpuSteps, MIN_STEP_MHZ, MAX_STEP_MHZ, MAX_BOOST, STANDARD_BOOST, isMaxBoost } from './cpu-steps.js';
 import { selectCpuClock } from './cpu-clock.js';
-import {validateTurboPolicy,turboCurveRows} from './turbo.js';
+import {validateTurboPolicy,turboCurveRows,turboCurveMatches} from './turbo.js';
 
 const execute = promisify(execFile);
 // The EC's unregulated mode, above level 7. The engine runs level 7 first until the fan has spun up.
@@ -520,7 +520,7 @@ export class WindowsProvider {
     this.slotWatch.invalidate();
     try{await this.bridge.request('fan-curve',{rows:turboCurveRows(saved),masks:saved.masks});}finally{this.slotWatch.invalidate();}
     const s=await this.snapshot();
-    if(s.fans.find(f=>f.id===saved.id)?.mode!=='curve'||s.fanProfiles.activeId!==saved.profile.id||JSON.stringify(s.fanProfiles.maskedSlots)!==JSON.stringify(saved.masks))throw Error('Previous fan curve read-back did not match.');
+    if(s.fans.find(f=>f.id===saved.id)?.mode!=='curve'||!turboCurveMatches(saved,s))throw Error('Previous fan curve read-back did not match.');
   }
   async heartbeat(active) { if (this.bridge?.child) await this.bridge.request('lease', { active }); }
   async close() { this.bridge?.close(); }

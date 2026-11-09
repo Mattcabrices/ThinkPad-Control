@@ -63,6 +63,18 @@ export function engineRows(levels, fanOff, limit, maxTemp = limit) {
   return rows;
 }
 const sameRows = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((row, i) => row[0] === b[i][0] && row[1] === b[i][1]);
+// Capture only configurations that round-trip exactly through the worker's
+// supported curve format. Never normalize or approximate an unknown EC table.
+export function decodeEngineCurve(rows, limit) {
+  if(!Array.isArray(rows)||![8,9].includes(rows.length)||rows.some(r=>!Array.isArray(r)||r.length!==2))return null;
+  const fanOff=rows.length===9,levels=rows.slice(fanOff?1:0,-1).map(r=>r[0]),maxTemp=rows.at(-1)[0];
+  // Always-on level 1 has an engine threshold of zero; the editor's unused
+  // threshold is canonicalized to its minimum, while every engine row stays exact.
+  if(!fanOff)levels[0]=MIN_CURVE_TEMP;
+  try{if(!sameRows(engineRows(levels,fanOff,limit,maxTemp),rows))return null;}
+  catch{return null;}
+  return {levels,fanOff,maxTemp};
+}
 
 // The engine follows its hottest sensor slot, and some slots hold one value while the CPU moves. T14s Gen 2
 // slot 11 read 65 C and T14 Gen 3 read 66 C, so a curve could never fall below that temperature's level.
@@ -176,6 +188,7 @@ export class FanProfiles {
     const engineCelsius=Number.isInteger(engine?.manualTemperatureLimit)&&engine.manualTemperatureLimit>=60&&engine.manualTemperatureLimit<=110?engine.manualTemperatureLimit:null;
     const manualTemperature={automatic,celsius:automatic?defaultCelsius:engineCelsius??defaultCelsius,defaultCelsius,engineCelsius};
     return { available: !reason, reason, limit, profiles, activeId: active?.id ?? null, curveSet, customCurve: curveSet && !active, minTemp: MIN_CURVE_TEMP,
+      currentCurve:curveSet&&limit?decodeEngineCurve(engine.rows,limit.celsius):null,
       manualTemperature,flatSlots, maskedSlots, recommendedMasks, removedSlots, reapply: curveSet && JSON.stringify(sortedMasks(maskedSlots)) !== JSON.stringify(recommendedMasks) };
   }
 }

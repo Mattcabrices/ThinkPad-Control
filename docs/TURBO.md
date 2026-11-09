@@ -8,9 +8,12 @@ pending; the alpha.29 fan-handover test does not certify this new feature.
 
 The backend reads current capabilities, power source and actual settings. It
 requires a readable CPU policy, temperatures below the manual cutoff and writable
-Max fan control. Begin in firmware mode or a saved curve matching the running
-configuration. Return existing manual control or an unmatched curve to firmware
-first, or save/apply the curve normally.
+Max fan control. Begin in firmware mode or a supported running curve. Alpha.32
+also captures custom curves that do not match a saved profile, using the exact
+thresholds and sensor adjustments read from the engine. Saved profiles are not
+created or edited. Unknown table formats and curves needing sensor-adjustment
+review remain blocked; apply a supported curve or return to firmware first.
+Existing manual control must also be returned before enabling Turbo.
 
 Before writing, Turbo captures recovery data. It then requests and verifies:
 
@@ -33,8 +36,9 @@ higher measured power is not guaranteed.
 
 **Restore previous settings** restores affected policies, captured wattages and
 the previous fan mode. Distinct hybrid frequency/EPP values are preserved. Saved
-curves return with their original thresholds and masks; saved profiles are not
-edited. Other tuning controls stay locked until restoration. **Return to firmware**
+and supported custom curves return with their original thresholds and masks;
+restoration verifies actual engine values rather than a profile name. Saved
+profiles are not edited. Other tuning controls stay locked until restoration. **Return to firmware**
 remains available; the recovery action remains available on every tab.
 
 Activation failure attempts verified restoration. Failed or unverified restoration
@@ -59,7 +63,7 @@ Intel demo files. They capture actual pre-Turbo values, not factory defaults.
 ## Tests
 
 `tests/turbo.test.js` covers Intel/Ryzen, AC/DC isolation, read-only fields, existing
-Maximum boost, saved curves, partial/ignored writes, rollback/retry, restart and
+Maximum boost, saved/custom curves, exact row/mask recovery, partial/ignored writes, rollback/retry, restart and
 corrupt-file recovery, device/plan/source changes, UI lease loss/renewal, API audit
 and failed post-activation snapshots. UI tests cover the restore action and honest
 capability messages. These use simulations or in-memory runners.

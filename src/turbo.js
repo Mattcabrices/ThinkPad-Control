@@ -42,8 +42,9 @@ export function planTurbo(s) {
   const cutoff=s.fanProfiles?.manualTemperature?.celsius;
   if(!Number.isFinite(cutoff)||!Number.isFinite(s.cpu?.temperature)||s.cpu.temperature>=cutoff||
     s.gpus?.some(g=>Number.isFinite(g.temperature)&&g.temperature>=cutoff))throw Error('Turbo requires fresh temperatures below the manual fan cutoff.');
-  const profile=s.fanProfiles?.profiles?.find(p=>p.id===s.fanProfiles.activeId);
-  if(fan.mode==='curve'&&(!profile?.valid||s.fanProfiles.reapply))throw Error('Save and apply the current curve before enabling Turbo so it can be restored exactly.');
+  const profile=s.fanProfiles?.profiles?.find(p=>p.id===s.fanProfiles.activeId)??
+    (s.fanProfiles?.currentCurve?{id:'captured-curve',...structuredClone(s.fanProfiles.currentCurve),valid:true}:null);
+  if(fan.mode==='curve'&&(!profile?.valid||s.fanProfiles.reapply))throw Error('The running fan curve cannot be captured safely. Apply a supported curve or return to firmware before enabling Turbo.');
   const targets=[],notes=[];
   if(s.ryzen?.available){
     for(const key of powerFields){
@@ -140,6 +141,7 @@ export class TurboController {
       for(const key of ['scheme',...(groups.includes('frequency')?['frequency',...(b.hybrid?['frequencyClass1']:[])]:[]),...(groups.includes('boost')?['mode','epp',...(b.hybrid?['eppClass1']:[])]:[])])if(p[key]!==b[key])throw Error(`Previous CPU ${key} could not be verified.`);
       if(j.before.ryzen&&j.attempted.some(k=>powerFields.includes(k))&&[...powerFields,'temperatureLimit'].some(k=>!equal(after.ryzen?.current?.[k],j.before.ryzen[k])))throw Error('Previous Ryzen limits could not be verified.');
       if(j.attempted.includes('fan')&&after.fans?.find(f=>f.id===j.before.fan.id)?.mode!==j.before.fan.mode)throw Error('Previous fan mode could not be verified.');
+      if(j.attempted.includes('fan')&&j.before.fan.mode==='curve'&&!turboCurveMatches(j.before.fan,after))throw Error('Previous fan curve could not be verified.');
     });
     if(errors.length){this.restoreError=`Restoration incomplete: ${errors.join(' ')}`;throw Error(this.restoreError);}
     this.persist(null);this.restoreError=null;return 'Previous CPU, wattage and fan settings restored and verified.';
@@ -147,3 +149,10 @@ export class TurboController {
 }
 
 export function turboCurveRows(saved){return engineRows(saved.profile.levels,saved.profile.fanOff,saved.limit,saved.profile.maxTemp);}
+export function turboCurveMatches(saved,snapshot){
+  const view=snapshot.fanProfiles,current=view?.currentCurve;
+  if(!current||!view.curveSet)return false;
+  try{return JSON.stringify(engineRows(current.levels,current.fanOff,view.limit?.celsius,current.maxTemp))===JSON.stringify(turboCurveRows(saved))&&
+    JSON.stringify(view.maskedSlots??[])===JSON.stringify(saved.masks);}
+  catch{return false;}
+}
