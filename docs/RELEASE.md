@@ -1,7 +1,7 @@
 # Release preparation
 
-The current source is **0.4.0-alpha.32**, an unsigned development preview.
-The latest installed hardware check is alpha.31. Automated tests and
+The current source is **0.4.0-alpha.33**, an unsigned development preview.
+The latest installed hardware check is alpha.32. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).

@@ -7,6 +7,28 @@ const source=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 function component(name,next){return source.slice(source.indexOf(`function ${name}()`),source.indexOf(`function ${next}()`));}
 function node(tag,text){return {tag,text,children:[],classList:{add(){}},append(...children){this.children.push(...children);},setAttribute(){},addEventListener(){}};}
 
+test('Ryzen power rows show provider ceilings separately from firmware readings and connection baselines',async()=>{
+  const snapshot=await new DemoProvider().snapshot();
+  snapshot.ryzen.ranges.fastWatts.max=37.5;snapshot.ryzen.ranges.slowWatts.max=28.2;
+  snapshot.ryzen.fields.sustainedWatts={available:false,restoreAvailable:false,reason:'Read-only firmware field'};
+  const state={snapshot,drafts:new Map(),busy:false,stale:false};
+  const context=vm.createContext({state,Map,Number,Math,fmt:String,
+    el:(tag,cls,text)=>({...node(tag,text),className:cls}),panel:()=>node('panel'),
+    append:(p,...children)=>{p.append(...children.filter(Boolean));return p;},
+    button:text=>node('button',text),command(){throw Error('Displaying limits must not write hardware');}});
+  vm.runInContext(component('ryzenPanel','fanPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
+  const root=vm.runInContext('ryzenPanel()',context),rows=walk(root).filter(n=>n.className?.startsWith('ryzen-row'));
+  assert.equal(rows.length,4);
+  for(const [i,max] of [[0,25],[1,37.5],[2,28.2]]){
+    assert.match(textOf(rows[i]),/Firmware limit/);assert.match(textOf(rows[i]),/Connection baseline/);
+    assert.match(textOf(rows[i]),new RegExp(`App maximum\\s+${String(max).replace('.','\\.')} W`));
+  }
+  assert.ok(walk(rows[0]).filter(n=>n.tag==='button'||n.tag==='input').every(n=>n.disabled),'Read-only stays disabled despite displaying an app ceiling');
+  assert.doesNotMatch(textOf(rows[3]),/App maximum/,'Temperature is not a wattage maximum');
+  assert.match(textOf(root),/not a hardware-rated maximum/);
+});
+
 test('startup retries initialize desktop controls after an initial outage and never attach twice after token renewal',async()=>{
   const state={token:null,mode:'live',stopped:false},ticks=[];
   let sessions=0,attachments=0,refreshes=0,renders=0;

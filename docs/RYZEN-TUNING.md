@@ -11,6 +11,14 @@ The CPU & power page selects direct SMU controls by Lenovo ThinkPad identity, si
 
 These are conservative application limits, not device maximum ratings or guaranteed performance. Power accepts tenths of a watt. A higher limit does not enable Windows boost or guarantee a higher clock. Voltage, multipliers, Curve Optimizer, time constants and GPU clock writes are not exposed.
 
+Each power row lists its **Firmware limit**, **Connection baseline** and **App
+maximum**. The first two come from observed laptop values. App maximum comes from
+the provider's validated request range, including a higher observed baseline
+where supported; Turbo uses the same ceiling for writable fields. It is not a
+hardware-rated or guaranteed accepted maximum. The current adapter does not
+expose a verified hardware maximum. Read-only fields remain disabled even when
+their app ceiling is displayed.
+
 ## Boundaries and verification
 
 The worker uses the existing LHM 0.9.6 signed embedded RyzenSMU module through an original MIT transport. It checks every IOCTL result and returned length, takes the shared Global\Access_PCI mutex and uses bounded waits. Only fixed, family-selected commands/register addresses exist internally. No arbitrary register or mailbox API is exposed to the UI, local HTTP API or private pipe. No additional tuning driver is installed.

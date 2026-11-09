@@ -294,7 +294,7 @@ function ryzenPanel() {
   if (!r?.current) {box.append(el('p','big-info',r?.reason||'Enable hardware access to discover compatible Ryzen controls.'));return box;}
   box.append(el('p','big-info','Set power and temperature limits in Ryzen firmware. Processor boost and CPU speed limits still apply.'));
   const help=el('details','control-help');help.open=!!state.ryzenHelpOpen;help.addEventListener('toggle',()=>{state.ryzenHelpOpen=help.open;});
-  append(help,el('summary','','About firmware limits and baselines'),el('p','','Every change must match firmware read-back. Raising a requested limit does not guarantee higher sustained wattage or faster clocks. Unsupported settings are read-only.'),el('p','','For sustained boosting under load, use Maximum boost for the intended power source and choose a CPU speed limit that permits boost, or No limit. Turning Processor boost off on Overview or CPU & power prevents boosting even with higher Ryzen power limits. Actual clocks still depend on workload, cooling and firmware. Changes here are manual and Lenovo firmware may overwrite them; the app does not automatically reapply them.'));
+  append(help,el('summary','','About firmware limits and baselines'),el('p','','Every change must match firmware read-back. Raising a requested limit does not guarantee higher sustained wattage or faster clocks. Unsupported settings are read-only.'),el('p','','App maximum is this app’s tuning ceiling for each power limit. Turbo uses the same ceiling for writable settings. It is not a hardware-rated maximum; this adapter does not expose one. Current limits and connection baselines are read from the laptop.'),el('p','','For sustained boosting under load, use Maximum boost for the intended power source and choose a CPU speed limit that permits boost, or No limit. Turning Processor boost off on Overview or CPU & power prevents boosting even with higher Ryzen power limits. Actual clocks still depend on workload, cooling and firmware. Changes here are manual and Lenovo firmware may overwrite them; the app does not automatically reapply them.'));
   for(const [source,label] of [['ac','Plugged in'],['dc','On battery']]){
     const mode=state.snapshot.boost?.[source],limit=state.snapshot.cpuSteps?.policy?.[source];
     const boost=Number.isFinite(mode)?mode===0?'Processor boost is off; raising these limits will not enable it.':'Processor boost is enabled.':'Processor boost status is unavailable.';
@@ -313,7 +313,9 @@ function ryzenPanel() {
     apply.setAttribute('aria-label',`Apply ${label}`);restore.setAttribute('aria-label',`Restore ${label} baseline`);
     const row=el('div',`ryzen-row${blocked?' ryzen-read-only':''}`), name=append(el('div'),el('strong','',label));
     if(blocked)name.append(el('span','tuning-readonly',readOnly?'Read-only':'Custom changes unavailable'));
-    name.append(append(el('div','tuning-readings'),append(el('span'),el('span','reading-label','Current '),el('strong','',`${fmt(r.current[key],1)} ${unit}`)),append(el('span'),el('span','reading-label','Baseline '),el('strong','',`${fmt(r.baseline?.[key],1)} ${unit}`))));
+    const readings=append(el('div','tuning-readings'),append(el('span'),el('span','reading-label',unit==='W'?'Firmware limit ':'Current '),el('strong','',`${fmt(r.current[key],1)} ${unit}`)),append(el('span'),el('span','reading-label','Connection baseline '),el('strong','',`${fmt(r.baseline?.[key],1)} ${unit}`)));
+    if(unit==='W')readings.append(append(el('span'),el('span','reading-label','App maximum '),el('strong','',`${fmt(range.max,1)} ${unit}`)));
+    name.append(readings);
     input.title=`Requested limit · ${range.min}–${range.max} ${unit}${blocked?' · '+(field.reason||'Read-only'):''}`;
     append(row,name,append(el('div','fan-actions'),input,el('span','',unit),apply,restore));
     if(blocked)row.append(el('p','metric-detail',field.reason||'Firmware changes are unavailable for this setting.'));
