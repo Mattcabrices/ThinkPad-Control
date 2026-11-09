@@ -1,4 +1,15 @@
 # Downloads data only. Never executes an upstream executable or installs a driver.
+function Get-DependencyHttpStatus($Exception) {
+    $directCode = $Exception.PSObject.Properties['StatusCode']
+    if ($directCode -and $null -ne $directCode.Value) { return [int]$directCode.Value }
+    $response = $Exception.PSObject.Properties['Response']
+    if ($response -and $null -ne $response.Value) {
+        $code = $response.Value.PSObject.Properties['StatusCode']
+        if ($code -and $null -ne $code.Value) { return [int]$code.Value }
+    }
+    return 0
+}
+
 function Get-DependencyTransport($Uri, $OutFile, $Headers = $null) {
     for ($attempt = 1; $attempt -le 3; $attempt++) {
         try {
@@ -7,7 +18,7 @@ function Get-DependencyTransport($Uri, $OutFile, $Headers = $null) {
             Invoke-WebRequest @request
             return
         } catch {
-            $status = if ($null -ne $_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+            $status = Get-DependencyHttpStatus $_.Exception
             # Retry transport failures, throttling and temporary server failures only.
             if ($attempt -eq 3 -or ($status -ne 0 -and $status -ne 408 -and $status -ne 429 -and $status -lt 500)) { throw }
             Write-Warning "Dependency download attempt $attempt failed; retrying."
@@ -28,7 +39,7 @@ function Get-DependencyDownload($Uri, $OutFile, $ReleaseAssetId = $null) {
     }
     try { Get-DependencyTransport -Uri $Uri -OutFile $OutFile }
     catch {
-        $status = if ($null -ne $_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+        $status = Get-DependencyHttpStatus $_.Exception
         if (-not $apiUri -or ($status -ne 0 -and $status -ne 408 -and $status -ne 429 -and $status -lt 500)) { throw }
         Write-Warning 'Release download unavailable; trying the pinned official GitHub API asset.'
         # Public data only: no tokens/credentials. The caller still requires the same SHA256.
@@ -50,7 +61,8 @@ foreach ($asset in $assets) {
         $temporary = "$target.download"
         try {
             Write-Output "Downloading $($asset.file)"
-            Get-DependencyDownload -Uri $asset.url -OutFile $temporary -ReleaseAssetId $asset.releaseAssetId
+            $releaseId = if ($asset.PSObject.Properties['releaseAssetId']) { $asset.releaseAssetId } else { $null }
+            Get-DependencyDownload -Uri $asset.url -OutFile $temporary -ReleaseAssetId $releaseId
             if ((Get-FileHash -LiteralPath $temporary -Algorithm SHA256).Hash -ne $asset.sha256) { throw "Dependency hash mismatch: $($asset.file)" }
             Move-Item -LiteralPath $temporary -Destination $target -Force
         } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }

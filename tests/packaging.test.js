@@ -18,7 +18,7 @@ test('dependency downloads retry transient failures but never accept partial or 
       const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
       cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
       writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url:'https://invalid.example/never-contacted',sha256:hash}]}));
-      const command=`$ErrorActionPreference='Stop';$global:attempts=0;$global:delays=@();
+      const command=`Set-StrictMode -Version Latest;$ErrorActionPreference='Stop';$global:attempts=0;$global:delays=@();
 function Start-Sleep {param($Seconds) $global:delays+= $Seconds}
 function Invoke-WebRequest {param([switch]$UseBasicParsing,$Uri,$OutFile,$TimeoutSec)
  $global:attempts++
@@ -175,14 +175,14 @@ test('pinned release API fallback handles transport outages without accepting wr
   const root=mkdtempSync(join(tmpdir(),'thinkpad-api-fallback-'));
   try {
     const expected=createHash('sha256').update('verified').digest('hex');
-    for(const mode of ['primary','fallback','api-corrupt','both-fail','primary-corrupt','not-found','bad-id','wrong-host','http','credentials','query','bad-cache']){
+    for(const mode of ['primary','fallback','http-client','api-corrupt','both-fail','primary-corrupt','not-found','not-found-direct','bad-id','wrong-host','http','credentials','query','bad-cache']){
       const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
       cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
       const url=mode==='wrong-host'?'https://other.example/owner/repo/releases/download/v1/asset.bin':mode==='http'?'http://github.com/owner/repo/releases/download/v1/asset.bin':mode==='credentials'?'https://user:secret@github.com/owner/repo/releases/download/v1/asset.bin':mode==='query'?'https://github.com/owner/repo/releases/download/v1/asset.bin?token=fixture':'https://github.com/owner/repo/releases/download/v1/asset.bin';
       writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url,releaseAssetId:mode==='bad-id'?'1;invalid':123,sha256:expected}]}));
       if(mode==='bad-cache'){mkdirSync(join(fixture,'.tools/dependencies'),{recursive:true});writeFileSync(join(fixture,'.tools/dependencies/asset.bin'),'tampered');}
     }
-    const command=`$ErrorActionPreference='Stop'; $root='${root.replaceAll("'","''")}';
+    const command=`Set-StrictMode -Version Latest;$ErrorActionPreference='Stop';Add-Type -AssemblyName System.Net.Http; $root='${root.replaceAll("'","''")}';
 function Start-Sleep {param($Seconds)}
 function Invoke-WebRequest {param([switch]$UseBasicParsing,$Uri,$OutFile,$TimeoutSec,$Headers)
  $global:calls.Add([string]$Uri)
@@ -194,20 +194,22 @@ function Invoke-WebRequest {param([switch]$UseBasicParsing,$Uri,$OutFile,$Timeou
  }
  if($Headers){throw 'Primary must not inherit API credentials or headers'}
  if($global:mode -eq 'not-found'){
-  $error=New-Object Exception 'HTTP404';$error|Add-Member NoteProperty Response ([pscustomobject]@{StatusCode=404});throw $error
+  $fixtureNotFound=New-Object Exception 'HTTP404';$fixtureNotFound|Add-Member NoteProperty Response ([pscustomobject]@{StatusCode=404});throw $fixtureNotFound
  }
+ if($global:mode -eq 'not-found-direct'){$fixtureNotFound=New-Object Exception 'HTTP404';$fixtureNotFound|Add-Member NoteProperty StatusCode 404;throw $fixtureNotFound}
+ if($global:mode -eq 'http-client'){[IO.File]::WriteAllText($OutFile,'partial');throw [Net.Http.HttpRequestException]::new('Primary transport failed without a Response property')}
  if($global:mode -notin @('primary','primary-corrupt')){[IO.File]::WriteAllText($OutFile,'partial');throw [Net.WebException]::new('Primary transport failed')}
  [IO.File]::WriteAllText($OutFile,$(if($global:mode -eq 'primary-corrupt'){'corrupt'}else{'verified'}))
 }
 $count=0
-foreach($global:mode in @('primary','fallback','api-corrupt','both-fail','primary-corrupt','not-found','bad-id','wrong-host','http','credentials','query','bad-cache')){
+foreach($global:mode in @('primary','fallback','http-client','api-corrupt','both-fail','primary-corrupt','not-found','not-found-direct','bad-id','wrong-host','http','credentials','query','bad-cache')){
  $global:calls=[Collections.Generic.List[string]]::new();$failed=$false
  $directory=Join-Path $root $global:mode
  try{& (Join-Path $directory 'scripts/fetch-dependencies.ps1')|Out-Null}catch{$failed=$true;$message=$_.Exception.Message}
  $target=Join-Path $directory '.tools/dependencies/asset.bin'
  $primary=@($global:calls|Where-Object {([uri]$_).Host -ne 'api.github.com'}).Count
  $api=@($global:calls|Where-Object {([uri]$_).Host -eq 'api.github.com'}).Count
- if($global:mode -in @('primary','fallback')){
+ if($global:mode -in @('primary','fallback','http-client')){
   if($failed -or !(Test-Path -LiteralPath $target) -or [IO.File]::ReadAllText($target) -ne 'verified'){throw "Verified download did not succeed: $global:mode $message"}
  }else{
   if(!$failed){throw "Invalid download accepted: $global:mode"}
@@ -216,10 +218,12 @@ foreach($global:mode in @('primary','fallback','api-corrupt','both-fail','primar
  switch($global:mode){
   'primary'{if($primary -ne 1 -or $api -ne 0){throw 'Unnecessary fallback'}}
   'fallback'{if($primary -ne 3 -or $api -ne 1){throw 'Fallback did not follow bounded primary retries'}}
+  'http-client'{if($primary -ne 3 -or $api -ne 1){throw 'Response-less transport error did not retry and fall back'}}
   'api-corrupt'{if($primary -ne 3 -or $api -ne 1 -or $message -notmatch 'hash mismatch'){throw 'Corrupt API result was not rejected by hash'}}
   'both-fail'{if($primary -ne 3 -or $api -ne 3){throw 'Unbounded transport retries'}}
   'primary-corrupt'{if($primary -ne 1 -or $api -ne 0 -or $message -notmatch 'hash mismatch'){throw 'Hash mismatch must never trigger fallback'}}
   'not-found'{if($primary -ne 1 -or $api -ne 0){throw 'Permanent HTTP errors must not retry/fallback'}}
+  'not-found-direct'{if($primary -ne 1 -or $api -ne 0){throw 'Response-less HTTP404 must not be treated as a transport outage'}}
   default{if($global:calls.Count -ne 0){throw 'Invalid configuration/cache contacted network'}}
  }
  if(Test-Path -LiteralPath ($target+'.download')){throw 'Partial download was not removed'}
@@ -228,6 +232,6 @@ foreach($global:mode in @('primary','fallback','api-corrupt','both-fail','primar
 Write-Output "Pinned fallback cases passed: $count"
 `;
     const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{encoding:'utf8',windowsHide:true,env:psEnv,timeout:20000});
-    assert.equal(result.status,0,result.stderr||result.error?.message);assert.match(result.stdout,/Pinned fallback cases passed: 12/);
+    assert.equal(result.status,0,result.stderr||result.error?.message);assert.match(result.stdout,/Pinned fallback cases passed: 14/);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
