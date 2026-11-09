@@ -77,9 +77,12 @@ npm run check
 npm test
 ./scripts/verify-release.ps1
 ./scripts/package-source.ps1
+./scripts/verify-archives.ps1
 ```
 
 Windows CI builds unsigned candidates and runs isolated tests. It does not publish releases or change physical hardware. Dependency assets and matching upstream sources are pinned by SHA256. Source packaging excludes local tools, telemetry, build outputs and private keys. Bit-for-bit reproducible builds are not yet established.
+
+Archive verification compares the finished portable/source ZIPs with the staged payload and current public source list. It rejects missing, changed, duplicate, unsafe and unexpected entries without extracting them. This checks build integrity; publisher trust and hardware validation are separate requirements.
 
 ## Architecture and documentation
 

@@ -138,7 +138,16 @@ license, and matching LGPL source versions for all embedded sensor modules. See
 [DEPENDENCY-REVIEW.md](DEPENDENCY-REVIEW.md). Recheck after dependency upgrades.
 
 Run scripts/package-source.ps1 for an allowlisted source ZIP that excludes local
-tools, build outputs, telemetry and private keys. Generate SHA256 checksums only
+tools, build outputs, telemetry and private keys. Its -ListFiles switch lists
+the exact public inputs without creating or overwriting a ZIP. After packaging,
+run scripts/verify-archives.ps1 from the project root. It validates the staged
+manifest and compares the portable and source ZIPs with the exact current inputs,
+including every file's size and SHA256. Unexpected/duplicate names, traversal,
+symlinks and missing files are refused without extracting archive contents.
+Optional -PackageRoot, -PortablePath and -SourcePath select alternate candidates.
+This verifies build integrity against local inputs, not publisher authenticity or
+hardware compatibility. Rebuild/repackage after source changes; the verifier
+must reject stale source archives. Generate SHA256 checksums only
 after all signing and packaging. Publish source, installer, portable ZIP and
 checksums together as a GitHub prerelease. Publish no Reddit announcement until
 the actual repository/release links and tested model list are available.

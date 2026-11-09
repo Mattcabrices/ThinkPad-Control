@@ -7,6 +7,8 @@ Use Windows x64, Node 24.19.0 and .NET SDK 8.0.427. Download the official tools,
 then run scripts/fetch-dependencies.ps1 and scripts/fetch-build-notices.ps1.
 Run npm run check, scripts/build-native.ps1, scripts/build-desktop.ps1
 (-SkipInstaller without Inno Setup), npm test and scripts/verify-release.ps1.
+Create the source ZIP with scripts/package-source.ps1, then run
+scripts/verify-archives.ps1 to compare both ZIPs against the current build inputs.
 The Windows CI workflow follows these steps. Network access is required for
 NuGet and pinned upstream downloads. No real hardware writes belong in CI.
 

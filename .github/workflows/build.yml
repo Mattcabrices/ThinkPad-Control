@@ -37,6 +37,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./scripts/verify-release.ps1
           ./scripts/package-source.ps1
+          ./scripts/verify-archives.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: unsigned-alpha-windows-x64
