@@ -21,9 +21,13 @@ Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
 The GPU page shows the sensors and controls the driver exposes. Independent integrated Radeon/Intel GPU boost is unavailable; legacy NVIDIA auto-boost is driver gated. A named motherboard sensor is not guaranteed. Missing readings stay unavailable, and a zero tachometer reading does not prove the fan has stopped.
 
-![ThinkPad Control running a simulated Turbo session](docs/images/turbo-demo.png)
+![ThinkPad Control dashboard with simulated hardware](docs/images/turbo-demo.png)
 
 *Simulated demo data, not a benchmark or proof of hardware compatibility. The normal application runs in its own desktop window.*
+
+![Saved fan curve editor in simulated mode](docs/images/fan-curves-demo.png)
+
+*The saved curve editor includes a Max cooling threshold. This is a simulated preview; applying a curve is an explicit action.*
 
 ## How performance controls work together
 
