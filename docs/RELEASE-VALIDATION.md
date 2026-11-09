@@ -1,6 +1,31 @@
 # Release validation
 
-## Alpha.29 verification — November 8, 2026
+## Alpha.30 software verification — November 9, 2026
+
+Application and bootstrap code at `dec460929a2ba61b02648c2ef64cc6e12dfbc6f6`
+passed the checks below. Subsequent documentation edits do not change runtime
+behavior. The installed app remains alpha.29; no alpha.30 hardware activation,
+fresh-driver installation or production certification is claimed.
+
+| Area | Evidence | Result |
+| --- | --- | --- |
+| Scoped JavaScript regression suite | Hosted Windows CI | 226 pass, no failures or skips |
+| Isolated native protocols and safety logic | Hosted Windows CI | 293 assertions pass |
+| Build and archive verification | Hosted Windows CI | 114 payload, 115 portable and 144 source files verified |
+| Packaged Ryzen/Intel desktop | Isolated demo lifecycle checks | Pass; no real hardware writes |
+| GUI layout | 36 actual WebView2 demo captures across two profiles and window sizes | Reviewed; simulated data only |
+| Missing-driver setup branch | 11 mocked success/failure cases | Trust-before-launch, single execution and cleanup verified in isolation |
+| Official driver download | Data-only download and forced transport fallback | Exact pinned SHA256 and valid Windows signature; installer never executed |
+
+Hosted evidence: [Windows build and tests](https://github.com/Mattcabrices/ThinkPad-Control/actions/runs/42578336326).
+
+These tests cover software behavior. They do not replace clean-device installation,
+physical Intel/other Ryzen validation, installed Turbo activation/restoration,
+longer thermal/recovery checks or trusted publisher signing. See the gate matrix
+in [release preparation](RELEASE.md). Public source and demo images are available;
+a reviewed binary release and announcement remain separate publication steps.
+
+## Historical alpha.29 verification — November 8, 2026
 
 The application code in `e5dabd7677d4ce6a5d64430a724aa0a6ddd29277` passed
 the checks below. Additional sensor-view regression tests accompany this report.

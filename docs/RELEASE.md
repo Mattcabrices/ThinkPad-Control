@@ -1,211 +1,131 @@
-# Public release preparation
+# Release preparation
 
-0.4.0-alpha.30 is an **unsigned development alpha**, not a claim of universal
-ThinkPad support. Original code is MIT. The package now includes the pinned
-TPFanCtrl2 2.5.1 engine rebuilt from pinned source with a documented
-fan-selector patch (original and modified sources, patch and build lock ship
-under notices/fan-engine), BIOS-mode configuration, signed LpcACPIEC module,
-upstream licenses, credits and matching source archives.
+The current source is **0.4.0-alpha.30**, an unsigned development preview.
+The latest installed hardware check remains alpha.29. Automated tests and
+simulated screenshots do not establish production hardware compatibility.
 
-## User installation flow
+Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
+Use [release validation](RELEASE-VALIDATION.md) for evidence and the
+[announcement draft](ANNOUNCEMENT.md) for the reviewable Reddit post. No public
+binary release is published at the time of this November 9, 2026 audit.
 
-### Unreleased UX fixes
+## What the candidate includes
 
-Alpha.30 adds [Turbo](TURBO.md), coordinating Max fan, CPU boost/speed policy and
-supported Ryzen wattage controls. It captures and verifies restoration, persists
-interruption recovery and leaves thermal limits unchanged. These new paths have
-simulation coverage only; alpha.29 installed results below do not certify Turbo.
+- A native WinForms/WebView2 desktop window, tray controls and bundled Node/.NET
+  runtimes. WebView2 is a prerequisite; initial acquisition needs internet.
+- CPU/GPU telemetry where exposed, per-core clock details, measured RPM, sensor
+  Min/Max and local SQLite history/audit. Missing sensors stay unavailable.
+- Separate AC/battery boost and speed policies with read-back/recovery; reviewed
+  Ryzen power fields, and Intel monitoring/policy controls with read-only PL1/PL2.
+- Firmware/manual/Max fan control, saved service curves with a Max threshold and
+  a configurable manual cutoff. Unknown thermal limits use an 85°C fallback.
+- Experimental [Turbo](TURBO.md), with captured prior settings and explicit Restore.
+  Its installed hardware activation/restoration test remains pending.
+- The pinned source-built TPFanCtrl2 2.5.1 with the documented fan-selector patch,
+  unmodified signed EC module, original/modified sources, licenses and credits.
+  See [dependency review](DEPENDENCY-REVIEW.md).
 
-The GUI keeps the compact hardware-monitor layout, with aligned numeric readings
-and controls, shorter visible guidance, and expandable boost/fan safety details.
-Ryzen rows show Current and Baseline values with units. Fan curves offer Discard
-edits, prevent deletion of the active profile, and distinguish Apply profile from
-Save and apply. The status bar reports pending work; errors remain visible until
-dismissed or replaced, and notifications have a dismiss button. Sensor explorer
-adds Reset Min/Max for this session without deleting recorded history, and keeps
-readings refreshing while the search box is focused. Settings and fan-history
-labels are clearer. Layout and restore/profile flows were checked using isolated
-demo data, including the desktop app's minimum 840-by-640 window size. This GUI
-pass does not reinstall the app or change physical hardware settings.
+Processor boost, CPU speed limit and Ryzen power requests work together. Raising
+wattage does not enable disabled boost or remove a speed cap, and accepted requests
+do not guarantee higher sustained draw. Turbo coordinates supported controls but
+cannot guarantee continuous boost. Intel direct wattage/voltage/multiplier writes
+and independent integrated AMD/Intel GPU boost are unavailable.
 
-Successful Ryzen baseline restores replace the corresponding input with the
-verified firmware read-back. Baselines come from the laptop when the hardware
-worker connects; they are not hardcoded factory wattages. Failed restores retain
-the edit, and other inputs keep their unsaved values.
+## Installation and lifetime
 
-Applying a fan profile now verifies release of manual ownership before changing
-the engine configuration. Unedited profiles apply directly; edited profiles use
-Save and apply. Failed saves never proceed to activation. Applying progress spans
-the full operation, and the display distinguishes actual firmware/manual control
-from a stored curve. Saving alone does not activate a curve. These changes require
-the matching updated worker and UI. The alpha.29 package and installed handover
-check include both; see the current evidence and release-validation report below.
+Setup requests administrator approval, installs under Program Files, registers
+an on-demand worker task and configures the owned fan service automatically.
+When PawnIO is absent, setup downloads the pinned official installer with bounded
+release/API retries, checks its SHA256 and Windows trusted signature, then runs
+it once with fixed arguments. Temporary bytes are kept in a private directory
+beneath the protected installation and removed afterward. Driver version and
+redistribution policy are unchanged; the driver installer is not bundled.
 
-Alpha.27 adds a configurable manual fan temperature cutoff, defaulting to the
-reported Ryzen firmware limit or Intel thermal target (85 C fallback if unknown).
-Users may select 60–110 C. Before manual control begins, worker and engine use the
-same selected cutoff. At that temperature the worker requests firmware, including
-for manual Max. Curves independently reach Max at their configured threshold.
-The preference survives upgrades; changing it reconnects the engine and requires
-firmware or curve mode. CPU thermal limits, curves and offsets are unchanged.
-High-temperature boundary tests use isolated telemetry, with no induced physical
-overheating. Installed validation of this new control remains pending.
+The worker task is tied to the Windows account recorded by approved setup.
+Automatic connection is scoped to that account; other accounts or a missing task
+may need explicit hardware-access approval. The UI normally stays unelevated.
+Unsigned components may be blocked by Windows application control. Signing and
+clean-device policy acceptance remain open; do not disable security protections.
 
-Returning from a saved curve to firmware removes active sensor corrections but
-retains the earlier valid offsets as inert comments in the same protected engine
-configuration. Applying a curve restores those offsets only when fresh settled
-sensor movement has not revoked them. Read-back checks both the curve and its
-offsets. Firmware readings remain unadjusted; this metadata does not control the
-fan in firmware mode. Alpha.25 could forget offsets on this round-trip; alpha.26
-contains the fix and requires its own installed validation.
+An external TPFanControl service is reported as a conflict and left untouched.
+Setup errors appear in the GUI and `hardware-setup-error.txt`. A driver return
+code 3010 reports that Windows needs a restart; the app does not initiate one.
+Repair hardware support retries setup after the underlying issue is resolved.
 
-The installer requests administrator approval and installs under Program Files.
-Setup always installs hardware support. It registers the on-demand hardware worker task and downloads the official PawnIO
-2.2.0 installer only when the driver is absent, checks its SHA256 and trusted
-signature, then installs the engine service. The package never includes the
-legacy TVicPort backend. The engine starts in BIOS mode; manual fan control and
-boost changes require explicit actions in the GUI. Hardware access connects
-through the installed task when the app opens; a separate UAC reconnect is a
-fallback when that task is unavailable, not a required step on each launch.
+Minimize keeps manual cooling while the lease/telemetry/cutoff checks pass.
+Closing releases manual cooling to firmware; a saved service curve continues.
+**CPU policies and Turbo wattage requests remain until restored or replaced by
+firmware.** Exit is not a reset of those settings. Startup never enables Turbo.
 
-An existing external TPFanControl service is a setup conflict; it is not stopped,
-deleted or replaced. Uninstall removes only an engine service pointing to this
-app's engine executable. Shared PawnIO and user history remain installed.
-Hardware setup errors are written to `hardware-setup-error.txt` in the installed
-application directory. A driver return code 3010 requires restart and rerunning
-setup. Offline installation works for the GUI; a missing driver needs network.
-Microsoft WebView2 remains a prerequisite with an official download link.
+Uninstall removes the owned task/service and app files, preserving user data and
+shared PawnIO. Upgrades migrate validated curves/offsets with backup/rollback and
+preserve stopped/disabled engine state. Portable copies never install a SYSTEM
+service from their writable folder. See [desktop usage](DESKTOP.md),
+[upgrades](UPGRADES.md), [fan curves](FAN-CURVES.md) and [policy recovery](POLICY-RECOVERY.md).
 
-Upgrades validate and migrate supported fan configuration onto new engine defaults,
-then stop a previously running owned engine before replacing files and restart it
-in its preserved firmware/curve mode. A stopped or disabled engine stays stopped.
-Malformed/manual configurations and unreadable service transitions block replacement.
-Interrupted configuration commits retain an exact rollback backup. See [upgrades](UPGRADES.md).
-The older 0.2 per-user install should be uninstalled before installing this
-machine-wide version; user data remains under LocalAppData/ThinkPadControl.
-Portable packages do not install a privileged service from a writable folder.
+## Build and package checks
 
-## Build requirements
+Use the pinned tool versions and complete sequence in [README](../README.md).
+The patched engine build needs PowerShell 7, C++ v143 and Windows SDK 10.0.26100.
+Normal PowerShell staging scripts also support Windows PowerShell 5.1.
 
-`scripts/build-fan-engine.ps1` requires PowerShell 7 (`pwsh`): it sets the MSBuild
-environment through `ProcessStartInfo.Environment`, which Windows PowerShell 5.1
-does not provide. It also needs Microsoft C++ Build Tools v143 and Windows SDK
-10.0.26100. `scripts/build-desktop.ps1` and the staging scripts run under either
-shell and take the release version from `package.json`.
+1. Fetch verified dependencies/notices and build the reviewed fan-engine patch.
+2. Build native components and the desktop. Run scoped `npm test` and the isolated
+   native assertions. Never use unrestricted test discovery for hardware harnesses.
+3. Review isolated desktop lifecycle checks and demo-only screenshots. The latter
+   capture actual rendered pages; their simulated data is not hardware evidence.
+4. Create the public source ZIP with `scripts/package-source.ps1`; `-ListFiles`
+   lists the exact source inputs without changing archives.
+5. Run `scripts/verify-archives.ps1`. It verifies the payload manifest and complete
+   portable/source ZIP contents against the current local inputs, without extraction.
+   It rejects missing/modified/unexpected files, unsafe/duplicate/symlink names and
+   data hidden in directory entries. The shared setup helper is mandatory.
+6. Generate checksums only after final packaging/signing. Keep source, portable,
+   installer, notices and hashes tied to the reviewed build. Repackage after edits.
 
-## Release gates
+CI builds unsigned development artifacts and never publishes a release or writes
+real hardware. Integrity checks compare against local inputs; they do not establish
+publisher trust. Bit-for-bit reproducible builds are not yet established.
 
-Alpha.3 adds Intel primary-fan eligibility and hybrid policy handling. Intel paths
-have isolated tests only; see [Intel support](INTEL-SUPPORT.md). Local installed
-build and hardware observations are tracked separately from release artifacts.
+## Gates before a production claim
 
-Alpha.5 adds verified CPU/GPU rollback and a persisted Maximum boost recovery
-target with explicit UI repair. No startup policy application is added. These
-paths have isolated failure-injection coverage; physical driver/crash tests remain
-pending. See [policy recovery](POLICY-RECOVERY.md).
+| Requirement | Current evidence | Remaining |
+| --- | --- | --- |
+| Source, architecture, schema and MIT/upstream attribution | Implemented; public source and matching license/source materials | Final notice review after dependency changes |
+| Automated build and failure-path coverage | Current evidence in [release validation](RELEASE-VALIDATION.md) | Rerun for final source/signing output |
+| GUI clarity and layout | Actual Ryzen/Intel demo captures, minimum-window and high-DPI checks | Owner review; no hardware compatibility inference |
+| Missing-driver download/trust gates | Mocked setup branch plus actual data-only SHA/signature checks | Real fresh-driver install and cleanup on a clean device |
+| Installed telemetry and fan handover | Scoped alpha.29 T14s results; earlier T14 Gen 3 observations | Current build on both Ryzen targets and real Intel hardware |
+| Turbo | Isolated activation, rollback, restart and failure tests | Separately approved installed activation and complete read-back/restore |
+| Battery and physical recovery | Partial historical/isolated coverage | AC/battery, longer sessions, sensor/worker/service loss, crash exhaustion, sleep/resume/reboot matrix |
+| Upgrade/uninstall and account scope | Prior approved upgrades and ownership tests | Clean-device, independent uninstall, standard-user/alternate-account validation |
+| Trusted distribution | Signing tooling prepared | Publisher identity, real signing/timestamps and clean-policy acceptance |
+| Public announcement | Reviewed source-preview draft exists | Actual reviewed binary release/links and accurate tested scope before a binary announcement |
 
-| Gate | State |
-| --- | --- |
-| MIT license and upstream attribution | Implemented |
-| Pinned engine, module, hashes and source archives | Implemented |
-| Program Files installer and service ownership checks | Installation exercised on both target machines; owned-service upgrade exercised on T14s; clean-device/uninstall matrix pending |
-| Driver hash and trusted signature verification | Implemented; elevated device access works on both targets; fresh-driver install/reboot matrix pending |
-| Windows build CI and source archive | Verified: [alpha.23 hosted build](https://github.com/Mattcabrices/ThinkPad-Control/actions/runs/42442764365) passed; portable and source archives verified locally |
-| Pinned dependency license/source review | Recorded; matching sources and licenses included; recheck before final signed release |
-| Trusted signing integration | Implemented; account/identity and end-to-end signed release pending |
-| T14s Gen 2 Ryzen 5 telemetry and physical fan validation | Selected controls and telemetry exercised on hardware; audible zero-RPM correlation and full matrix pending |
-| T14 Gen 3 Ryzen 5 telemetry and physical fan validation | Alpha.1 results recorded; alpha.2 retest and full matrix pending |
-| Clean install, upgrade, uninstall, sleep/resume and crash recovery | Alpha.22/23 curve-preserving upgrades verified on T14s; remaining clean-device, independent uninstall and recovery matrix pending |
+Only claim support demonstrated on the named model/build. Unknown readings and
+ignored firmware fields remain unavailable/read-only. A zero tachometer reading
+does not prove a stopped fan. Preserve these limits in the GUI and release text.
 
-See the isolated test suite for the latest automated checks and the boundary between isolated tests and physical validation. The current installer remains unsigned; package integrity checks do not establish trusted signing.
+## Signing and publication
 
-For each target device, verify actual CPU/GPU temperatures and tachometers,
-manual levels 1–7, firmware return, AC/DC boost read-back, stale sensor fallback,
-UI exit, worker/API/service crash, suspend/resume and reboot. Capture results
-without serial numbers. Do not advertise a model as supported before this pass.
+Follow [signing setup](SIGNING.md) when the publisher account/identity is ready.
+The engine is signed before worker compilation so its final hash is embedded;
+upstream provenance remains separate. Payload scripts, including the shared
+bootstrap helper, installer and uninstaller are covered by the signing path.
+No publisher identity or paid signing account was provisioned by this work.
+An unsigned experimental prerelease must retain that status and its validation
+limits; it must not be presented as a stable production release.
 
-The signing integration is implemented; see [SIGNING.md](SIGNING.md) for exact
-ordering, provider options, cost, prerequisites and one-month signing/deletion.
-The engine is signed before worker compilation so the final engine hash is baked
-into the worker; upstream provenance hashes remain separate. Payloads, scripts,
-installer, temporary setup copies and uninstaller are covered by the signed-build
-path. Local preflight and refusal tests pass, but no signing identity/account is
-provisioned and no cloud signing request has been submitted. Hosted unsigned CI is verified. End-to-end trusted
-signing and clean-device policy acceptance remain pending.
+Review the final source/portable/installer/checksum set and tested-device list
+before creating a GitHub release. Review the single [Reddit draft](ANNOUNCEMENT.md)
+before posting. CI artifacts, old drafts and simulated screenshots are not a
+substitute for that decision. Publication is not automatic.
 
-Dependency review now includes the four MPL source archives, Mono's full official
-license, and matching LGPL source versions for all embedded sensor modules. See
-[DEPENDENCY-REVIEW.md](DEPENDENCY-REVIEW.md). Recheck after dependency upgrades.
+## Owned fan-service recovery
 
-Run scripts/package-source.ps1 for an allowlisted source ZIP that excludes local
-tools, build outputs, telemetry and private keys. Its -ListFiles switch lists
-the exact public inputs without creating or overwriting a ZIP. After packaging,
-run scripts/verify-archives.ps1 from the project root. It validates the staged
-manifest and compares the portable and source ZIPs with the exact current inputs,
-including every file's size and SHA256. Unexpected/duplicate names, traversal,
-symlinks and missing files are refused without extracting archive contents.
-Optional -PackageRoot, -PortablePath and -SourcePath select alternate candidates.
-This verifies build integrity against local inputs, not publisher authenticity or
-hardware compatibility. Rebuild/repackage after source changes; the verifier
-must reject stale source archives. Generate SHA256 checksums only
-after all signing and packaging. Publish source, installer, portable ZIP and
-checksums together as a GitHub prerelease. Publish no Reddit announcement until
-the actual repository/release links and tested model list are available.
-
-## Current evidence and remaining decisions
-
-Alpha.29 is the latest installed and physically checked build. The application code
-at e5dabd7677d4ce6a5d64430a724aa0a6ddd29277 passed the hosted Windows build,
-197 local scoped application tests, 285 isolated native assertions, and packaged
-Ryzen/Intel GUI simulations. An approved T14s upgrade verified automatic hardware
-access, 111 immutable installed files, and preserved power/Ryzen settings and saved
-profiles. Physical Max-to-curve handover passed with ownership released; the
-starting effective curve configuration, saved profiles and firmware mode were
-restored and verified. See [release validation](RELEASE-VALIDATION.md) for the
-coverage and remaining stable-release gates. All packages remain unsigned.
-
-The public source is [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
-Earlier alpha.23/24 physical checks verified short minimized manual operation
-and close-to-firmware behavior on the T14s. Alpha.29 repeats the native lifecycle
-checks in isolated packaged simulations. This does not extend those earlier short
-hardware observations into long-session or cross-device certification.
-
-No public binary release or Reddit announcement has been published. Signing identity, clean-device policy acceptance, physical suspend/crash recovery and validation on Intel and additional Ryzen devices remain release gates. A development prerelease must clearly retain the unsigned, experimental status; it must not be labelled production-ready.
-
-## Announcement draft
-
-Title: ThinkPad Control alpha: desktop telemetry, RPM and direct fan levels for Ryzen ThinkPads
-
-I am building an open-source Windows ThinkPad controller with CPU/GPU telemetry,
-measured fan RPM, direct fan levels and AC/battery CPU boost controls. It bundles
-TPFanCtrl2 rather than asking users to assemble a separate fan engine. Huge thanks
-to original author troubadix and the TPFanCtrl2 maintainers, namazso and the
-LibreHardwareMonitor contributors.
-
-Original app code is MIT; bundled components retain their licenses. This is an
-alpha: sensor availability varies and integrated Radeon has no independent
-boost toggle. Insert actual tested model/results, signing status and GitHub
-source/release URLs here before posting. Please report machine type, CPU/GPU and
-BIOS/driver versions, without serial numbers.
-
-
-### Owned fan-engine crash recovery
-
-The installer configures the verified bundled TPFanControl service for two crash
-restart attempts, delayed by 5 and 15 seconds, followed by no further action.
-The policy resets its failure counter after one day without a failure. No reboot
-or recovery command is configured. Existing startup type and running state are
-unchanged by this configuration step; normal installation still starts its owned
-engine. Windows repeats the final action, which is explicitly NONE here.
-
-Configuration requires the exact protected service path and reviewed engine/module
-hashes. The helper checks actual policy read-back and attempts verified rollback
-on failure, reporting an unverified rollback explicitly. It does not change the
-failure-actions flag or configure an external fan service. Windows may retain an
-already queued restart after a manual stop; disabling the service prevents that
-restart. See [Microsoft's service configuration documentation](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-changeserviceconfig2w).
-
-Isolated transaction tests cover rejected ownership, initial read failure,
-idempotence, ignored/partial writes, rollback failure and lost ownership. These
-tests do not certify live engine crash recovery: an approved installed upgrade
-and a separate controlled hardware test are still required.
+The desired owned-service crash policy is two restart attempts after 5 and 15
+seconds, followed by NONE, with a one-day failure-counter reset and no reboot or
+recovery command. Configuration validates the protected path and exact engine/
+module hashes, checks read-back and attempts verified rollback on failure. It
+never configures an external fan service. Isolated policy tests do not prove all
+physical crash/suspend recovery paths; the remaining device matrix still applies.

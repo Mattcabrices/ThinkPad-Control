@@ -45,7 +45,7 @@ For an installer build, run `ThinkPad-Control-Setup-0.4.0-alpha.30-x64.exe`. Set
 
 The package includes a source-built **TPFanCtrl2 2.5.1**, our documented fan-selector patch, its signed EC module, credits and matching sources. Setup configures the engine and hardware worker automatically. If PawnIO is absent, its official installer is downloaded and its pinned hash and signature checked. An existing external TPFanControl service is reported as a conflict and left untouched.
 
-Hardware access connects automatically through an on-demand task registered during setup. The interface runs without elevation. Unsigned components may be blocked by Windows application control; do not disable security features to run this preview. Trusted signing remains a planned release milestone.
+Hardware access connects automatically through an on-demand task registered during setup for its recorded Windows account. Another account or a missing task may require hardware-access approval again. The interface normally runs without elevation. Unsigned components may be blocked by Windows application control; do not disable security features to run this preview. Trusted signing remains a planned release milestone.
 
 Start by checking **Overview**, then **Cooling** and **CPU & power**. Review [the desktop guide](docs/DESKTOP.md) for setup, control lifetime and recovery. A portable build must stay in its complete extracted folder and does not install privileged support from a user-writable directory.
 
