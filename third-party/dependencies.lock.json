@@ -3,9 +3,9 @@
   "tpfcVersion": "2.5.1",
   "tpfcCommit": "878c8c0a751b4cce126d3b3b59dacf6268314239",
   "assets": [
-    {"file":"TPFanControl.exe","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/TPFanControl.exe","sha256":"a84a3e1076a2ea7bcb2b3ff68c0be080447e1982fee3d14f66a2bf2d1542b302"},
-    {"file":"LpcACPIEC.bin","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/LpcACPIEC.bin","sha256":"c38fd116e7aff4d1fdb0a494e296be0a6708e5a22fc72f14587442fb7f8f7906"},
-    {"file":"TPFanControl.upstream.ini","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/TPFanControl.ini","sha256":"fda5b99a73de4b2d6a295e48f74ba2dc1a7c5087693cd6ca0ffd2e29b93281b4"},
+    {"file":"TPFanControl.exe","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/TPFanControl.exe","releaseAssetId":531016979,"sha256":"a84a3e1076a2ea7bcb2b3ff68c0be080447e1982fee3d14f66a2bf2d1542b302"},
+    {"file":"LpcACPIEC.bin","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/LpcACPIEC.bin","releaseAssetId":531016978,"sha256":"c38fd116e7aff4d1fdb0a494e296be0a6708e5a22fc72f14587442fb7f8f7906"},
+    {"file":"TPFanControl.upstream.ini","url":"https://github.com/mews-se/TPFanCtrl2/releases/download/v2.5.1/TPFanControl.ini","releaseAssetId":531016980,"sha256":"fda5b99a73de4b2d6a295e48f74ba2dc1a7c5087693cd6ca0ffd2e29b93281b4"},
     {"file":"TPFanCtrl2-source.zip","url":"https://github.com/mews-se/TPFanCtrl2/archive/878c8c0a751b4cce126d3b3b59dacf6268314239.zip","sha256":"78dab94d27a483b83fdacb9cd3328e627a1c7424af890f200efcd9f7a27e8a0a"},
     {"file":"PawnIO.Modules-source.zip","url":"https://github.com/namazso/PawnIO.Modules/archive/c683032770575d7705d1149f9d7fa7fd381766fc.zip","sha256":"b98b46e4bed539cd288f9dd6f2fedbdeb4d6c756843866de1d3bfdb379ff7ebe"}
   ],

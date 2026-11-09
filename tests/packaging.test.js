@@ -170,3 +170,64 @@ test('public source archive excludes local credentials, runtime recovery and pri
     for(const file of [...fixed,...included,'package.json','scripts/package-source.ps1'])assert.ok(entries.includes(file),`Public source missing: ${file}`);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('pinned release API fallback handles transport outages without accepting wrong bytes, hosts or credentials', {skip:process.platform!=='win32',timeout:25000},()=>{
+  const root=mkdtempSync(join(tmpdir(),'thinkpad-api-fallback-'));
+  try {
+    const expected=createHash('sha256').update('verified').digest('hex');
+    for(const mode of ['primary','fallback','api-corrupt','both-fail','primary-corrupt','not-found','bad-id','wrong-host','http','credentials','query','bad-cache']){
+      const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
+      cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
+      const url=mode==='wrong-host'?'https://other.example/owner/repo/releases/download/v1/asset.bin':mode==='http'?'http://github.com/owner/repo/releases/download/v1/asset.bin':mode==='credentials'?'https://user:secret@github.com/owner/repo/releases/download/v1/asset.bin':mode==='query'?'https://github.com/owner/repo/releases/download/v1/asset.bin?token=fixture':'https://github.com/owner/repo/releases/download/v1/asset.bin';
+      writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url,releaseAssetId:mode==='bad-id'?'1;invalid':123,sha256:expected}]}));
+      if(mode==='bad-cache'){mkdirSync(join(fixture,'.tools/dependencies'),{recursive:true});writeFileSync(join(fixture,'.tools/dependencies/asset.bin'),'tampered');}
+    }
+    const command=`$ErrorActionPreference='Stop'; $root='${root.replaceAll("'","''")}';
+function Start-Sleep {param($Seconds)}
+function Invoke-WebRequest {param([switch]$UseBasicParsing,$Uri,$OutFile,$TimeoutSec,$Headers)
+ $global:calls.Add([string]$Uri)
+ $api=([uri]$Uri).Host -eq 'api.github.com'
+ if($api){
+  if([string]$Uri -ne 'https://api.github.com/repos/owner/repo/releases/assets/123' -or $Headers.Accept -ne 'application/octet-stream' -or $Headers['X-GitHub-Api-Version'] -ne '2022-11-28' -or $Headers.Keys.Count -ne 2){throw 'Invalid API request headers or repository'}
+  if($global:mode -eq 'both-fail'){[IO.File]::WriteAllText($OutFile,'partial');throw [Net.WebException]::new('API transport failed')}
+  [IO.File]::WriteAllText($OutFile,$(if($global:mode -eq 'api-corrupt'){'corrupt'}else{'verified'}));return
+ }
+ if($Headers){throw 'Primary must not inherit API credentials or headers'}
+ if($global:mode -eq 'not-found'){
+  $error=New-Object Exception 'HTTP404';$error|Add-Member NoteProperty Response ([pscustomobject]@{StatusCode=404});throw $error
+ }
+ if($global:mode -notin @('primary','primary-corrupt')){[IO.File]::WriteAllText($OutFile,'partial');throw [Net.WebException]::new('Primary transport failed')}
+ [IO.File]::WriteAllText($OutFile,$(if($global:mode -eq 'primary-corrupt'){'corrupt'}else{'verified'}))
+}
+$count=0
+foreach($global:mode in @('primary','fallback','api-corrupt','both-fail','primary-corrupt','not-found','bad-id','wrong-host','http','credentials','query','bad-cache')){
+ $global:calls=[Collections.Generic.List[string]]::new();$failed=$false
+ $directory=Join-Path $root $global:mode
+ try{& (Join-Path $directory 'scripts/fetch-dependencies.ps1')|Out-Null}catch{$failed=$true;$message=$_.Exception.Message}
+ $target=Join-Path $directory '.tools/dependencies/asset.bin'
+ $primary=@($global:calls|Where-Object {([uri]$_).Host -ne 'api.github.com'}).Count
+ $api=@($global:calls|Where-Object {([uri]$_).Host -eq 'api.github.com'}).Count
+ if($global:mode -in @('primary','fallback')){
+  if($failed -or !(Test-Path -LiteralPath $target) -or [IO.File]::ReadAllText($target) -ne 'verified'){throw "Verified download did not succeed: $global:mode $message"}
+ }else{
+  if(!$failed){throw "Invalid download accepted: $global:mode"}
+  if($global:mode -ne 'bad-cache' -and (Test-Path -LiteralPath $target)){throw 'Unverified bytes entered cache'}
+ }
+ switch($global:mode){
+  'primary'{if($primary -ne 1 -or $api -ne 0){throw 'Unnecessary fallback'}}
+  'fallback'{if($primary -ne 3 -or $api -ne 1){throw 'Fallback did not follow bounded primary retries'}}
+  'api-corrupt'{if($primary -ne 3 -or $api -ne 1 -or $message -notmatch 'hash mismatch'){throw 'Corrupt API result was not rejected by hash'}}
+  'both-fail'{if($primary -ne 3 -or $api -ne 3){throw 'Unbounded transport retries'}}
+  'primary-corrupt'{if($primary -ne 1 -or $api -ne 0 -or $message -notmatch 'hash mismatch'){throw 'Hash mismatch must never trigger fallback'}}
+  'not-found'{if($primary -ne 1 -or $api -ne 0){throw 'Permanent HTTP errors must not retry/fallback'}}
+  default{if($global:calls.Count -ne 0){throw 'Invalid configuration/cache contacted network'}}
+ }
+ if(Test-Path -LiteralPath ($target+'.download')){throw 'Partial download was not removed'}
+ $count++
+}
+Write-Output "Pinned fallback cases passed: $count"
+`;
+    const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{encoding:'utf8',windowsHide:true,env:psEnv,timeout:20000});
+    assert.equal(result.status,0,result.stderr||result.error?.message);assert.match(result.stdout,/Pinned fallback cases passed: 12/);
+  }finally{rmSync(root,{recursive:true,force:true});}
+});

@@ -18,7 +18,15 @@ package verifies the upstream bytes before installing privileged hardware suppor
 Modified modules must satisfy the driver's signing requirements. Our MIT license
 does not override LGPL rights.
 
-The PawnIO driver installer is **not redistributed**. The optional hardware setup
+Reviewed release files also pin a `releaseAssetId`. If the normal GitHub release
+route exhausts its three transport attempts, source builds may use the official
+API for that same repository and pinned asset ID, with at most three attempts.
+No credentials are sent. The original SHA256 remains mandatory before bytes
+enter the verified cache. Wrong hashes, invalid fallback metadata and permanent
+HTTP errors fail closed; fallback never selects a newer or different binary.
+This is build-download resilience, not a change to runtime hardware setup.
+
+The PawnIO driver installer is **not redistributed**. Hardware setup
 downloads the official signed 2.2.0 installer, verifies its pinned SHA256 and
 Authenticode signature, and runs it only when no PawnIO service exists. Its
 source and license are available at https://github.com/namazso/PawnIO and the
