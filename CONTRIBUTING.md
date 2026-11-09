@@ -17,6 +17,17 @@ CPU use low. Keep manual hardware harnesses outside this
 directory and invoke them explicitly only in an approved maintenance window.
 Do not use unrestricted `node --test` discovery in a hardware-test workspace.
 
+For actual desktop layout review after building, run
+`./scripts/test-desktop.ps1 -CaptureScreenshots` in an interactive Windows session
+with WebView2 available. It opens isolated Ryzen and Intel demos without UAC or
+hardware access, capturing all seven pages plus CPU-tuning/fan-curve details at
+1320×960 and 840×640 outer-window sizes. PNGs and viewport/overflow diagnostics
+are written under the reported `artifacts/desktop-check-*` folder. Display
+scaling affects CSS viewport size and is recorded in each capture's JSON.
+The flag selects visual checks; run without it for the separate minimize/close/
+reopen lifecycle checks. Normal startup never captures screenshots. Both
+unattended modes refuse to run without an explicit demo profile.
+
 For the installer, put the official Inno Setup 6.7.3 compiler in .tools/inno.
 Review that compiler's licensing for your use. Signing credentials must stay
 outside the source tree. CI uploads unsigned alpha artifacts, never releases.

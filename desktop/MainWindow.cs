@@ -6,7 +6,7 @@ using Microsoft.Web.WebView2.WinForms;
 
 namespace ThinkPad.Desktop;
 
-internal sealed class MainWindow : Form
+internal sealed partial class MainWindow : Form
 {
     private readonly WebView2 web=new() {Dock=DockStyle.Fill,DefaultBackgroundColor=Color.FromArgb(246,246,243)};
     private readonly Label status=new() {Text="Starting ThinkPad Control…",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font("Segoe UI",13)};
@@ -18,6 +18,7 @@ internal sealed class MainWindow : Form
     private readonly ToolStripMenuItem hardwareAccess;
     private bool hardwareEnabled;
     private readonly bool smokeMode;
+    private readonly bool visualMode;
     private readonly bool intelDemo;
     private readonly System.Windows.Forms.Timer? smokeTimer;
     private readonly Stopwatch smokeElapsed=Stopwatch.StartNew();
@@ -35,7 +36,9 @@ internal sealed class MainWindow : Form
     private bool useTpfc = File.Exists(Path.Combine(AppContext.BaseDirectory,"engine","TPFanControl.exe"));
     public MainWindow(string[] args,EventWaitHandle activate)
     {
-        this.args=args;intelDemo=args.Contains("--demo-intel");demo=args.Contains("--demo")||intelDemo;smokeMode=args.Contains("--smoke-test");
+        var mode=StartupMode.Parse(args);
+        if(!mode.Allowed)throw new InvalidOperationException("Unattended checks require an explicit demo profile.");
+        this.args=args;intelDemo=mode.Intel;demo=mode.Demo;smokeMode=mode.Unattended;visualMode=mode.Visual;
         dataDirectory=Environment.GetEnvironmentVariable("THINKPAD_DESKTOP_DATA")??(smokeMode?Path.Combine(Path.GetTempPath(),"ThinkPadControlSmoke-"+Guid.NewGuid().ToString("N")):Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ThinkPadControl"));
         Directory.CreateDirectory(dataDirectory);
         backend=new(root,dataDirectory);
@@ -102,7 +105,7 @@ internal sealed class MainWindow : Form
     private async Task FinishSmoke(bool passed,string? error=null,JsonElement? checks=null,JsonElement? views=null)
     {
         if(smokeFinished)return;smokeFinished=true;
-        File.WriteAllText(Path.Combine(dataDirectory,"desktop-smoke.json"),JsonSerializer.Serialize(new{schemaVersion=2,profile=intelDemo?"intel":"ryzen",passed,stage=smokeStage,error,checks,views}));
+        File.WriteAllText(Path.Combine(dataDirectory,"desktop-smoke.json"),JsonSerializer.Serialize(new{schemaVersion=2,profile=intelDemo?"intel":"ryzen",checkKind=visualMode?"visual":"lifecycle",passed,stage=smokeStage,error,checks,views,screenshots=visualCaptures}));
         Environment.ExitCode=passed?0:1;
         await Quit();
     }
@@ -154,7 +157,10 @@ internal sealed class MainWindow : Form
                     var checks=report.RootElement;
                     if(checks.TryGetProperty("metrics",out var metrics)&&metrics.GetInt32()>=4&&checks.GetProperty("desktop").GetBoolean()&&checks.GetProperty("hardwareDisabled").GetBoolean()&&checks.GetProperty("setupDisabled").GetBoolean()) {
                         if(!checks.GetProperty("navigationReadable").GetBoolean()){await FinishSmoke(false,"Navigation labels are hidden or clipped at this desktop width.",checks.Clone());break;}
-                        if(intelDemo) {
+                        if(visualMode) {
+                            await CaptureDemoVisuals();
+                            SmokeTrace("demo-visuals-captured");await FinishSmoke(true,checks:checks.Clone());
+                        } else if(intelDemo) {
                             var rawViews=await web.CoreWebView2.ExecuteScriptAsync("(()=>{document.querySelector('#navigation button[data-view=cpu]').click();const cpuPage=document.querySelector('#page-title')?.textContent==='CPU & power',ryzenPanelAbsent=!document.querySelector('[data-tuning-vendor=amd-ryzen]'),intelTuningShown=!!document.querySelector('[data-tuning-vendor=intel]'),mixedClassesShown=document.body.innerText.includes('Processor classes currently have different limits');document.querySelector('#navigation button[data-view=gpu]').click();return {cpuPage,ryzenPanelAbsent,intelTuningShown,mixedClassesShown,intelGpuShown:document.body.innerText.includes('Intel Graphics')};})()");
                             using var viewDocument=JsonDocument.Parse(rawViews);
                             var views=viewDocument.RootElement;

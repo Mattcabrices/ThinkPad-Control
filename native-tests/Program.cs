@@ -10,6 +10,15 @@ view.Write(32,255);view.Write(36,255); // invalid tachometer sentinel
 using var adapter=new TpfcAdapter(name,()=>now);
 var checks=0;
 void Check(bool value,string message) { if(!value) throw new Exception(message); checks++; }
+foreach(var flag in new[]{"--smoke-test","--visual-test"}) {
+    Check(!ThinkPad.Desktop.StartupMode.Parse([flag]).Allowed,"Unattended checks cannot start a live window or worker.");
+    foreach(var profile in new[]{"--demo","--demo-intel"}) {
+        var mode=ThinkPad.Desktop.StartupMode.Parse([profile,flag]);
+        Check(mode.Allowed&&mode.Unattended&&mode.Demo&&mode.Intel==(profile=="--demo-intel")&&mode.Visual==(flag=="--visual-test"),"Test modes require an explicit, correctly selected simulation.");
+    }
+}
+Check(ThinkPad.Desktop.StartupMode.Parse([]) is {Allowed:true,Demo:false,Unattended:false},"Normal startup remains live and does not capture screenshots.");
+Check(ThinkPad.Desktop.StartupMode.Parse(["--demo"]) is {Allowed:true,Demo:true,Unattended:false,Visual:false},"Interactive demos do not capture automatically.");
 void Reject(Action action,string message) { try { action(); } catch(InvalidOperationException) { checks++;return; } throw new Exception(message); }
 void Publish(int mode,int raw) { view.Write(8,view.ReadInt32(4));view.Write(12,mode);view.Write(20,raw);view.Write(0,view.ReadInt32(0)+1); }
 

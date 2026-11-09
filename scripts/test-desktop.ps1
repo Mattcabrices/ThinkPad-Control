@@ -1,6 +1,7 @@
 param(
     [string]$PackageRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\windows-x64'),
-    [ValidateSet('All','Ryzen','Intel')][string]$DemoProfile = 'All'
+    [ValidateSet('All','Ryzen','Intel')][string]$DemoProfile = 'All',
+    [switch]$CaptureScreenshots
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -19,7 +20,8 @@ foreach ($item in $profiles) {
         $env:THINKPAD_DESKTOP_DATA = $directory
         $demoFlag = if ($item -eq 'Intel') { '--demo-intel' } else { '--demo' }
         # These flags cannot enter live mode. No UAC, driver, service or power-setting changes.
-        $child = Start-Process -FilePath $executable -ArgumentList $demoFlag,'--smoke-test' -WindowStyle Hidden -PassThru
+        $checkFlag = if ($CaptureScreenshots) { '--visual-test' } else { '--smoke-test' }
+        $child = Start-Process -FilePath $executable -ArgumentList $demoFlag,$checkFlag -WindowStyle Hidden -PassThru
         if (-not $child.WaitForExit(60000)) { throw 'The demo exceeded its independent 55-second process deadline.' }
         $report = Get-Content -Raw -LiteralPath (Join-Path $directory 'desktop-smoke.json') | ConvertFrom-Json
         if ($child.ExitCode -ne 0 -or $report.schemaVersion -ne 2 -or -not $report.passed -or
@@ -27,11 +29,20 @@ foreach ($item in $profiles) {
             $report.checks.metrics -lt 4 -or -not $report.checks.hardwareDisabled -or -not $report.checks.setupDisabled -or -not $report.checks.navigationReadable) {
             throw "Desktop $item check failed. Inspect $directory for the stage trace and result."
         }
-        if ($item -eq 'Intel' -and (-not $report.views.cpuPage -or -not $report.views.ryzenPanelAbsent -or -not $report.views.intelTuningShown -or
+        if ($CaptureScreenshots) {
+            if ($report.checkKind -ne 'visual' -or @($report.screenshots).Count -ne 18) { throw 'Visual check did not capture every page at both sizes.' }
+            $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach ($capture in $report.screenshots) {
+                if ($capture.file -notmatch '^(wide|compact)-(?:(overview|cpu|gpu|fan|sensors|activity|advanced)|(cpu|fan)-detail)\.png$' -or -not $seen.Add($capture.file)) { throw 'Invalid or duplicate screenshot name.' }
+                $bytes = [IO.File]::ReadAllBytes((Join-Path $directory ('screenshots\'+$capture.file)))
+                if ($bytes.Length -lt 1024 -or [BitConverter]::ToString($bytes,0,8) -ne '89-50-4E-47-0D-0A-1A-0A' -or $capture.scrollWidth -gt $capture.clientWidth) { throw 'Invalid screenshot or overflowing page.' }
+            }
+        } elseif ($report.checkKind -ne 'lifecycle') { throw 'Expected the normal lifecycle check.' }
+        if (-not $CaptureScreenshots -and $item -eq 'Intel' -and (-not $report.views.cpuPage -or -not $report.views.ryzenPanelAbsent -or -not $report.views.intelTuningShown -or
             -not $report.views.mixedClassesShown -or -not $report.views.intelGpuShown)) {
             throw 'Intel demo did not render all expected capability-specific views.'
         }
-        $results += [pscustomobject]@{ profile=$report.profile; passed=$true; stage=$report.stage }
+        $results += [pscustomobject]@{ profile=$report.profile; passed=$true; stage=$report.stage; checkKind=$report.checkKind; screenshots=@($report.screenshots).Count }
     } finally {
         $env:THINKPAD_DESKTOP_DATA = $previousData
         # Cleanup only this script's known demo executable if its own deadline failed.

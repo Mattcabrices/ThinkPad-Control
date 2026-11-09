@@ -7,11 +7,11 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        var smoke=args.Contains("--smoke-test");
+        var mode=StartupMode.Parse(args);
+        var smoke=mode.Unattended;
         // Unattended checks must never enter live hardware mode or activate an existing live instance.
-        var demo=args.Contains("--demo")||args.Contains("--demo-intel");
-        if(smoke&&!demo){Environment.ExitCode=2;return;}
-        if(smoke)Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+        var demo=mode.Demo;
+        if(!mode.Allowed){Environment.ExitCode=2;return;}
         if(smoke)Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         // Independent of the UI message pump: even a blocked COM call cannot leave
         // an unattended demo process alive indefinitely. No live mode can reach this.

@@ -30,6 +30,7 @@
     <Compile Include="../native/PrivatePipe.cs" Link="PrivatePipe.cs" />
     <Compile Include="../desktop/WorkerTask.cs" Link="WorkerTask.cs" />
     <Compile Include="../desktop/BackendHost.cs" Link="BackendHost.cs" />
+    <Compile Include="../desktop/StartupMode.cs" Link="StartupMode.cs" />
   </ItemGroup>
 </Project>
 
