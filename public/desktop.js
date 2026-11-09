@@ -16,17 +16,19 @@ export function attachDesktop({el,button,state,onExit}) {
   const close=button('×','icon-button',()=>dialog.close());close.setAttribute('aria-label','Close settings');
   top.append(el('span','eyebrow','DESKTOP SETTINGS'),close);
   const h=el('h2','','Settings');h.id='settings-heading';dialog.setAttribute('aria-labelledby','settings-heading');
-  const description=el('p','','Hardware access connects automatically for the Windows account registered during setup. If the connection fails, try Enable hardware access from the Hardware menu. Repair hardware support reinstalls the app’s hardware setup and needs administrator approval.');
+  const description=el('p','','Hardware access connects automatically for the Windows account used during setup. To reconnect, use Hardware → Enable hardware access. Repair requires administrator approval.');
   const diagnosis=el('p');diagnosis.id='driver-status';
   const engine=el('p');engine.id='engine-status';
-  const explanation=el('p','','The TPFanCtrl2 fan engine is bundled. If the signed PawnIO driver is missing, setup downloads and verifies its official installer; internet access is required for that step. Firmware controls cooling until you apply a manual level or a fan curve. Existing external fan services are never replaced.');
+  const explanation=el('p','','The TPFanCtrl2 fan engine is bundled. Setup downloads and verifies the signed PawnIO driver if missing; that step needs internet access. An existing external fan service is left unchanged.');
   const lifecycle=el('p','','Minimizing keeps manual fan control active in the system tray. Closing the window returns manual control to firmware while the app stays in the tray. Saved fan curves keep running in either case. Choose Exit here or from the tray to stop the app.');
   const removal=el('p','','Uninstalling removes the hardware worker task and the fan engine service. The PawnIO driver stays, because other apps may share it, and so does your data folder.');
-  const note=el('p','','Independent integrated AMD/Intel GPU boost is unavailable. Sensors the laptop does not expose stay unavailable. CPU boost, speed limits and wattage settings remain until restored or changed; closing the window does not reset them.');
+  const note=el('p','','Closing the window returns manual fans to firmware. CPU boost, speed limits and wattage settings are not reset on close; use their restore controls to undo changes.');
+  const details=el('details','control-help');
+  details.append(el('summary','','Cooling, exit and uninstall'),lifecycle,removal);
   const install=button('Repair hardware support','button',()=>post({type:'setup-hardware'}));
   install.id='install-hardware';install.disabled=state.mode==='demo';
   const exit=button('Exit ThinkPad Control','button',onExit);exit.id='stop-service';
-  dialog.replaceChildren(top,h,description,diagnosis,engine,explanation,lifecycle,removal,note,install,document.createTextNode(' '),exit);
+  dialog.replaceChildren(top,h,description,diagnosis,engine,explanation,note,details,install,document.createTextNode(' '),exit);
   window.chrome.webview.addEventListener('message',event=>{
     const message=event.data;
     if(['settings','hardware-state'].includes(message?.type)) {
