@@ -32,7 +32,7 @@ Both paths use a 10-second lease and firmware-return requests on EOF, timeout, s
 
 ## UI architecture
 
-Small dependency-free ES-module client: centralized snapshot state, safe DOM construction, reusable metric cards, SVG time-series chart, capability-gated boost switches and fan sliders. Views: overview, CPU, GPU, advanced CPU tuning, cooling, all sensors and activity. Sensor search includes source and unit. Polling is sequential with timeout, visible connection/staleness state, and no optimistic hardware success. Controls display observed state after read-back. Keyboard-accessible navigation and controls, responsive layouts, reduced-motion support. Demo mode is unmistakable and cannot issue hardware writes.
+Small dependency-free ES-module client: centralized snapshot state, safe DOM construction, reusable metric cards, SVG time-series chart, capability-gated boost switches and fan sliders. Views: overview, CPU and power (including capability-gated advanced CPU tuning), GPU, cooling, all sensors, activity and fan calibration under Advanced. Sensor search includes source and unit. Empty hardware views link directly to Settings without issuing hardware commands. Polling is sequential with timeout, visible connection/staleness state, and no optimistic hardware success. Controls display observed state after read-back. Keyboard-accessible navigation and controls, responsive layouts, reduced-motion support. Demo mode is unmistakable and cannot issue hardware writes.
 
 ## Data model
 

@@ -16,13 +16,13 @@ export function attachDesktop({el,button,state,onExit}) {
   const close=button('×','icon-button',()=>dialog.close());close.setAttribute('aria-label','Close settings');
   top.append(el('span','eyebrow','DESKTOP SETTINGS'),close);
   const h=el('h2','','Settings');h.id='settings-heading';dialog.setAttribute('aria-labelledby','settings-heading');
-  const description=el('p','','Hardware access connects by itself when the app opens. If it fails, or after moving the app, repair it here. Repair needs one UAC approval.');
+  const description=el('p','','Hardware access connects automatically for the Windows account registered during setup. If the connection fails, try Enable hardware access from the Hardware menu. Repair hardware support reinstalls the app’s hardware setup and needs administrator approval.');
   const diagnosis=el('p');diagnosis.id='driver-status';
   const engine=el('p');engine.id='engine-status';
-  const explanation=el('p','','Includes the signed PawnIO driver and the bundled TPFanCtrl2 engine. Firmware controls cooling until you apply a manual level or a fan curve. Existing external fan services are never replaced.');
+  const explanation=el('p','','The TPFanCtrl2 fan engine is bundled. If the signed PawnIO driver is missing, setup downloads and verifies its official installer; internet access is required for that step. Firmware controls cooling until you apply a manual level or a fan curve. Existing external fan services are never replaced.');
   const lifecycle=el('p','','Minimizing keeps manual fan control active in the system tray. Closing the window returns manual control to firmware while the app stays in the tray. Saved fan curves keep running in either case. Choose Exit here or from the tray to stop the app.');
   const removal=el('p','','Uninstalling removes the hardware worker task and the fan engine service. The PawnIO driver stays, because other apps may share it, and so does your data folder.');
-  const note=el('p','','Independent Radeon boost is unavailable on these APUs. Sensors a laptop doesn\'t expose stay unavailable.');
+  const note=el('p','','Independent integrated AMD/Intel GPU boost is unavailable. Sensors the laptop does not expose stay unavailable. CPU boost, speed limits and wattage settings remain until restored or changed; closing the window does not reset them.');
   const install=button('Repair hardware support','button',()=>post({type:'setup-hardware'}));
   install.id='install-hardware';install.disabled=state.mode==='demo';
   const exit=button('Exit ThinkPad Control','button',onExit);exit.id='stop-service';

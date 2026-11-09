@@ -34,7 +34,7 @@ const headings = {
   gpu:['Graphics','GPU telemetry and the controls your driver actually supports.'],
   fan:['Cooling','Direct fan control, with firmware always within reach.'],
   sensors:['All sensors','Every exposed sensor. Real readings, without the guesswork.'],
-  advanced:['Advanced','Optional extras. Nothing here is needed for normal use.'],
+  advanced:['Fan calibration','Measure this laptop’s RPM at each supported fan level.'],
   activity:['Activity','A local record of requested changes and verified results.']
 };
 const state = { token:null, mode:'live', snapshot:null, history:[], activity:[], view:'overview', minutes:10, busy:false, stale:true, error:null, drafts:new Map(), search:'', stopped:false };
@@ -348,7 +348,7 @@ async function measureFanLevels(id) {
 function fanPanel() {
   const box=panel('Fan control','fan',null,el('span','panel-pill','DIRECT CONTROL')); box.classList.add('control-panel');
   if (!state.snapshot.fans.length) {
-    box.append(append(el('div','empty-state'),el('strong','','No writable fan interface detected'),el('span','','The native bridge can expose supported fan controls and tachometers. ThinkPad EC fan support still needs a validated model adapter.'),button('Open setup ↗','text-button',()=>$('#setup-dialog').showModal()))); return box;
+    box.append(append(el('div','empty-state'),el('strong','','Fan control unavailable'),el('span','','Open Settings to check hardware access and the fan engine. Some laptops expose RPM without allowing direct fan control.'),button('Open Settings','text-button',()=>$('#setup-dialog').showModal()))); return box;
   }
   for (const fan of state.snapshot.fans) {
     const row=el('div','fan-control'), top=el('div','fan-top');
@@ -477,13 +477,13 @@ function fanProfilesPanel() {
 }
 // Optional. Everything else works without it.
 function fanSpeedsPanel() {
-  const box=panel('Measured fan speeds','fan',null,el('span','panel-pill','OPTIONAL')); box.classList.add('control-panel','fan-speeds');
+  const box=panel('Measured fan speeds','fan','Measured RPM at each fan level on this laptop'); box.classList.add('control-panel','fan-speeds');
   const fan=state.snapshot.fans.find(f=>f.controlUnit==='level');
-  if(!fan){ box.append(append(el('div','empty-state'),el('strong','','No fan with levels detected'),el('span','','This needs the bundled fan engine and hardware access.'))); return box; }
+  if(!fan){ box.append(append(el('div','empty-state'),el('strong','','Fan calibration unavailable'),el('span','','Connect hardware access and the fan engine in Settings. Calibration needs a fan that supports direct levels.'),button('Open Settings','text-button',()=>$('#setup-dialog').showModal()))); return box; }
   const learned=state.snapshot.fanLevels??{speeds:{}}, levels=[1,2,3,4,5,6,7,64];
-  box.append(el('p','fan-explanation','You don\'t need this for normal use. The app notes what each level really does on this laptop whenever a level runs for a while. Measuring just fills in the rest. Speeds come from this laptop\'s own readings and aren\'t estimates.'));
+  box.append(el('p','fan-explanation','Compare measured RPM across fan levels to see how this laptop responds. Readings are learned as levels run; Measure all levels fills in the remaining readings by changing the fan speed.'));
   const list=el('div','speed-list');
-  for(const level of levels) list.append(append(el('div','speed-row'),el('span','',level===64?'Level 10 / Boost mode':`Level ${level}`),el('strong','',learned.speeds[level]?`About ${fmt(learned.speeds[level])} RPM`:'Not measured yet')));
+  for(const level of levels) list.append(append(el('div','speed-row'),el('span','',level===64?'Max fan (Level 10)':`Level ${level}`),el('strong','',learned.speeds[level]?`About ${fmt(learned.speeds[level])} RPM`:'Not measured yet')));
   box.append(list);
   const same=levels.filter(level=>level<=7&&learned.speeds[level]&&learned.speeds[level]===learned.speeds[7]);
   const notes=[];
@@ -505,7 +505,7 @@ function gpuPanels() {
     if (gpu.memoryTotal!=null) box.append(el('div','big-info',`Video memory: ${fmt(gpu.memoryUsed)} / ${fmt(gpu.memoryTotal)} MB${gpu.power!=null ? ` · GPU power: ${fmt(gpu.power,1)} W` : ''}`));
     boxes.push(box);
   }
-  if (!boxes.length) boxes.push(append(panel('Graphics','gpu'),el('div','empty-state','No GPU inventory available. Configure the native bridge or check Windows inventory permissions.')));
+  if (!boxes.length) boxes.push(append(panel('Graphics','gpu'),append(el('div','empty-state'),el('strong','','No graphics readings available'),el('span','','Open Settings to check hardware access. GPU readings depend on the installed graphics driver and exposed sensors.'),button('Open Settings','text-button',()=>$('#setup-dialog').showModal()))));
   return boxes;
 }
 // Device, then category, then readings, with the lowest and highest seen since the app opened.
@@ -565,7 +565,7 @@ function sensorTable() {
   const root=el('div','sensor-tree'), filter=state.search.trim().toLowerCase();
   const sensors=state.snapshot.sensors.filter(s=>`${s.name} ${s.group} ${s.id} ${sensorDeviceName(s)} ${s.type} ${s.unit??''} ${s.source??''}`.toLowerCase().includes(filter));
   if(filter) root.append(el('p','sensor-match-count',`${sensors.length} of ${state.snapshot.sensors.length} sensors match`));
-  if(!sensors.length){ root.append(el('p','empty-note',filter?'No matching sensors.':'No sensor readings yet. Open Settings to connect hardware access.')); return root; }
+  if(!sensors.length){ root.append(el('p','empty-note',filter?'No matching sensors.':'No sensor readings yet. Open Settings to check hardware access.')); if(!filter)root.append(button('Open Settings','text-button',()=>$('#setup-dialog').showModal())); return root; }
   root.append(append(el('div','sensor-row sensor-head'),el('span','','Sensor'),el('span','sensor-number','Value'),el('span','sensor-number','Min'),el('span','sensor-number','Max')));
   const devices=new Map();
   for(const sensor of sensors){ const name=sensorDeviceName(sensor), device=devices.get(name)??{group:sensor.group,sensors:[]}; device.sensors.push(sensor); devices.set(name,device); }

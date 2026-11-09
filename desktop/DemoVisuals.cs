@@ -26,6 +26,9 @@ internal sealed partial class MainWindow
                     await CaptureDemoPage(output,layout.Name,view,true);
                 }
             }
+            await web.CoreWebView2.ExecuteScriptAsync("document.querySelector('#setup-dialog').showModal();");
+            await CaptureDemoPage(output,layout.Name,"settings",false);
+            await web.CoreWebView2.ExecuteScriptAsync("document.querySelector('#setup-dialog').close();");
         }
     }
 
@@ -36,6 +39,10 @@ internal sealed partial class MainWindow
         var raw=await web.CoreWebView2.ExecuteScriptAsync("(()=>{const root=document.documentElement,content=document.querySelector('#content'),edge=content.getBoundingClientRect().right;return {simulated:document.querySelector('#mode-badge')?.textContent==='SIMULATED DEMO',viewportWidth:innerWidth,viewportHeight:innerHeight,scrollWidth:root.scrollWidth,clientWidth:root.clientWidth,contentWidth:content.clientWidth,contentScroll:content.scrollWidth,overflowing:[...content.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>edge+1).slice(0,12).map(n=>({tag:n.tagName,cls:n.className?.baseVal??n.className,text:n.textContent.slice(0,80)}))};})()");
         using var document=JsonDocument.Parse(raw);var reading=document.RootElement;
         if(!reading.GetProperty("simulated").GetBoolean())throw new InvalidOperationException("Screenshot target is not a simulated demo.");
+        if(view=="settings") {
+            var modal=await web.CoreWebView2.ExecuteScriptAsync("(()=>{const d=document.querySelector('#setup-dialog'),r=d.getBoundingClientRect();return d.open&&d.contains(document.activeElement)&&r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight&&d.scrollWidth<=d.clientWidth;})()");
+            if(modal!="true")throw new InvalidOperationException("Settings must be modal, focused and contained within the demo viewport.");
+        }
         var file=layout+"-"+view+(detail?"-detail":"")+".png";
         using(var stream=new FileStream(Path.Combine(output,file),FileMode.CreateNew,FileAccess.Write,FileShare.None))
             await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);

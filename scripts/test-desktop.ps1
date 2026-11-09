@@ -30,10 +30,10 @@ foreach ($item in $profiles) {
             throw "Desktop $item check failed. Inspect $directory for the stage trace and result."
         }
         if ($CaptureScreenshots) {
-            if ($report.checkKind -ne 'visual' -or @($report.screenshots).Count -ne 18) { throw 'Visual check did not capture every page at both sizes.' }
+            if ($report.checkKind -ne 'visual' -or @($report.screenshots).Count -ne 20) { throw 'Visual check did not capture every page and Settings at both sizes.' }
             $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
             foreach ($capture in $report.screenshots) {
-                if ($capture.file -notmatch '^(wide|compact)-(?:(overview|cpu|gpu|fan|sensors|activity|advanced)|(cpu|fan)-detail)\.png$' -or -not $seen.Add($capture.file)) { throw 'Invalid or duplicate screenshot name.' }
+                if ($capture.file -notmatch '^(wide|compact)-(?:(overview|cpu|gpu|fan|sensors|activity|advanced|settings)|(cpu|fan)-detail)\.png$' -or -not $seen.Add($capture.file)) { throw 'Invalid or duplicate screenshot name.' }
                 $bytes = [IO.File]::ReadAllBytes((Join-Path $directory ('screenshots\'+$capture.file)))
                 if ($bytes.Length -lt 1024 -or [BitConverter]::ToString($bytes,0,8) -ne '89-50-4E-47-0D-0A-1A-0A' -or $capture.scrollWidth -gt $capture.clientWidth) { throw 'Invalid screenshot or overflowing page.' }
             }

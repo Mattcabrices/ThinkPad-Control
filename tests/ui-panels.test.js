@@ -7,6 +7,35 @@ const source=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 function component(name,next){return source.slice(source.indexOf(`function ${name}()`),source.indexOf(`function ${next}()`));}
 function node(tag,text){return {tag,text,children:[],classList:{add(){}},append(...children){this.children.push(...children);},setAttribute(){},addEventListener(){}};}
 
+test('missing hardware views open Settings without issuing commands; an empty sensor search stays a search result',()=>{
+  let opened=0;
+  const state={snapshot:{fans:[],gpus:[],sensors:[]},search:'',drafts:new Map()};
+  const context=vm.createContext({state,Map,Number,Math,fmt:String,trackSensorRanges(){},
+    el:(tag,cls,text)=>node(tag,text),panel:()=>node('panel'),
+    append:(parent,...children)=>{parent.append(...children);return parent;},
+    button:(text,cls,action)=>({...node('button',text),action}),
+    $:selector=>{assert.equal(selector,'#setup-dialog');return {showModal(){opened++;}};},
+    command(){throw Error('Opening Settings must never change hardware');}});
+  vm.runInContext(component('fanPanel','fanProfilesPanel')+
+    source.slice(source.indexOf('function fanSpeedsPanel()'),source.indexOf('const SENSOR_CATEGORIES='))+
+    component('sensorTable','sensorsPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)];
+  for(const expression of ['fanPanel()','fanSpeedsPanel()','gpuPanels()[0]','sensorTable()']){
+    const buttons=walk(vm.runInContext(expression,context)).filter(n=>n.tag==='button');
+    assert.equal(buttons.length,1,expression);assert.equal(buttons[0].text,'Open Settings');buttons[0].action();
+  }
+  assert.equal(opened,4);
+  state.search='missing sensor';
+  const nodes=walk(vm.runInContext('sensorTable()',context));
+  assert.ok(nodes.some(n=>n.text==='No matching sensors.'));
+  assert.equal(nodes.some(n=>n.tag==='button'),false,'A search miss must not suggest broken hardware');
+  state.snapshot.fans=[{id:'fan',controlUnit:'level',capability:{available:true}}];
+  const calibration=walk(vm.runInContext('fanSpeedsPanel()',context));
+  assert.ok(calibration.some(n=>n.text==='Max fan (Level 10)'));
+  assert.ok(calibration.some(n=>n.text==='Measure all levels'));
+  assert.ok(calibration.some(n=>n.text?.includes('by changing the fan speed')));
+});
+
 test('successful baseline restore replaces only its textbox draft with firmware read-back; failure keeps edits',async()=>{
   const snapshot=await new DemoProvider().snapshot();snapshot.ryzen.current.fastWatts=24.7;
   const state={snapshot,busy:false,stale:false,ryzenDrafts:new Map([['fastWatts','39'],['slowWatts','28']])};
