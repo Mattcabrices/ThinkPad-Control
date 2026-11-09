@@ -148,3 +148,25 @@ test('upgrade service-state query distinguishes stopped engines and fails closed
   const failed=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',"function Get-Service { throw 'Service read denied' }; "+command],{encoding:'utf8',windowsHide:true,env:psEnv});
   assert.equal(failed.status,1,'A failed service read must not be treated as an engine that should restart');
 });
+
+test('public source archive excludes local credentials, runtime recovery and private journals but retains documented source', {skip:process.platform!=='win32',timeout:20000},()=>{
+  const root=mkdtempSync(join(tmpdir(),'thinkpad-source-privacy-'));
+  try {
+    const directories=['src','public','native','native-tests','desktop','installer','scripts','tests','docs','third-party','.github','signing'];
+    for(const directory of directories)mkdirSync(join(root,directory),{recursive:true});
+    const fixed=['README.md','LICENSE','THIRD-PARTY-NOTICES.md','SECURITY.md','CONTRIBUTING.md','NuGet.Config','.gitignore','signing/artifact-signing.example.json','signing/metadata.example.json','signing/certificate-store.example.json'];
+    for(const file of fixed)writeFileSync(join(root,file),'Public fixture');
+    writeFileSync(join(root,'package.json'),JSON.stringify({version:'0.0.0-fixture'}));
+    cpSync('scripts/package-source.ps1',join(root,'scripts/package-source.ps1'));
+    const excluded=['docs/publisher.p12','docs/Publisher.PFX','docs/config.local.json','docs/CONFIG.LOCAL.JSON','docs/.env','docs/.env.production','docs/history.sqlite-wal','docs/history.db-shm','docs/turbo-recovery.json','docs/turbo-demo-intel.json','docs/HANDOFF.md','docs/HOST-VALIDATION.md','docs/nested/.aws/credentials','src/data/settings.json','native/obj/build.json'];
+    const included=['src/example.js','docs/SIGNING.md','docs/ANNOUNCEMENT.md','docs/images/demo.png','tests/fixtures/valid.json','third-party/build.lock.json'];
+    for(const file of [...excluded,...included]){mkdirSync(join(root,file,'..'),{recursive:true});writeFileSync(join(root,file),file);}
+    const script=join(root,'scripts/package-source.ps1').replaceAll("'","''"),archive=join(root,'artifacts/releases/ThinkPad-Control-0.0.0-fixture-source.zip').replaceAll("'","''");
+    const command=`$ErrorActionPreference='Stop'; & '${script}' | Out-Null; Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip=[IO.Compression.ZipFile]::OpenRead('${archive}'); try { @($zip.Entries | ForEach-Object { $_.FullName }) | ConvertTo-Json -Compress } finally { $zip.Dispose() }`;
+    const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{encoding:'utf8',windowsHide:true,env:psEnv});
+    assert.equal(result.status,0,result.stderr);
+    const entries=JSON.parse(result.stdout.trim());
+    for(const file of excluded)assert.ok(!entries.includes(file),`Private file leaked: ${file}`);
+    for(const file of [...fixed,...included,'package.json','scripts/package-source.ps1'])assert.ok(entries.includes(file),`Public source missing: ${file}`);
+  }finally{rmSync(root,{recursive:true,force:true});}
+});

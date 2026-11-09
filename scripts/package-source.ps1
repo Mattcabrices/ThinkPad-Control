@@ -12,7 +12,10 @@ $archive = [IO.Compression.ZipArchive]::new($stream,[IO.Compression.ZipArchiveMo
 try {
     $sources = @($files | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot $_) })
     $sources += @($directories | ForEach-Object { Get-ChildItem -LiteralPath (Join-Path $projectRoot $_) -File -Recurse } | Where-Object {
-        $_.FullName.Substring($projectRoot.Length+1) -notmatch '(^|\\)(bin|obj|node_modules|\.git)(\\|$)' -and $_.Extension -notin @('.pdb','.log','.sqlite','.db','.user','.pfx','.pem','.key') -and $_.Name -notin $privateJournals
+        $_.FullName.Substring($projectRoot.Length+1) -notmatch '(^|\\)(bin|obj|node_modules|\.git|\.aws|\.codex|\.agents|data)(\\|$)' -and
+        $_.Extension -notin @('.pdb','.log','.sqlite','.db','.user','.pfx','.p12','.pem','.key') -and
+        $_.Name -notmatch '(?i)(^\.env(?:\.|$)|\.local\.json$|\.(?:sqlite|db)-(?:wal|shm)$|^turbo-(?:recovery|demo(?:-intel)?)\.json$)' -and
+        $_.Name -notin $privateJournals
     })
     foreach ($source in $sources) {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$source.FullName,$source.FullName.Substring($projectRoot.Length+1).Replace('\','/'),[IO.Compression.CompressionLevel]::Optimal) | Out-Null
