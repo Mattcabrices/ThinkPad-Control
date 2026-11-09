@@ -1,68 +1,71 @@
 # ThinkPad Control
 
-An open-source Windows desktop controller for Intel and Ryzen ThinkPads: CPU/GPU telemetry, measured fan RPM, direct fan levels, AC/battery CPU boost controls and local history. Original code is [MIT licensed](LICENSE).
+A Windows desktop app for ThinkPad owners who want to see what their hardware is doing and control cooling and CPU performance from one place.
 
-By **Matt Cabrices**. **0.4.0-alpha.30 is an unsigned development alpha. Hardware support is not yet certified on either target model.** The first targets are T14s Gen 2 AMD and T14 Gen 3 AMD. Other ThinkPads are detected by capability; no universal support claim is made.
+Monitor temperatures, per-core clocks, power and fan RPM. Set a fan level or save a temperature curve. Manage processor boost and speed limits separately for AC and battery. On supported Ryzen systems, adjust the power limits exposed by the firmware.
 
-Alpha.30 adds [Turbo](docs/TURBO.md): Maximum boost, no CPU speed cap, supported
-Ryzen wattage ceilings and Max fan, with Restore previous settings and persistent
-interruption recovery. Temperature limits stay unchanged. Intel wattage limits
-remain read-only. Installed Turbo hardware validation is pending.
+Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
-Alpha.3 adds experimental Intel primary-fan setup, hybrid CPU energy preferences and per-class frequency restoration. Intel hardware validation is pending; see [Intel support and test plan](docs/INTEL-SUPPORT.md).
+**Current status: 0.4.0-alpha.30, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
-**Advanced CPU tuning adapts to Intel and AMD Ryzen processors.** AMD Ryzen
-systems show the Ryzen power-limit controls, which require an exact reviewed
-firmware-table mapping; unrecognized mappings stay unavailable. Intel systems
-show their own capability explanation and retain the available monitoring and
-Windows power-policy controls plus read-only PL1/PL2 settings on reviewed models
-(captured at connection; reconnect to refresh). Direct Intel PL1/PL2, voltage and multiplier
-tuning is not implemented; Intel never receives Ryzen SMU controls. Other AMD
-processor families are outside this advanced-tuning scope.
+## What you can do
 
-Alpha.4 adds model-aware Intel ratio references and a simulated Intel GUI profile.
-Run `npm run demo -- --demo-intel` for its browser preview, or launch the desktop
-with `--demo-intel`. Both remain clearly labelled simulations with no hardware writes.
-
-Alpha.5 verifies CPU/GPU rollback read-back and preserves pending Maximum boost
-recovery targets across restart. The CPU page offers an explicit recovery action
-when needed. See [policy recovery](docs/POLICY-RECOVERY.md).
-
-Alpha.5 verifies CPU/GPU rollback read-back and preserves pending Maximum boost
-recovery targets across restart. The CPU page offers an explicit recovery action
-when needed. See [policy recovery](docs/POLICY-RECOVERY.md).
-
-## Install
-
-The local build produces `ThinkPad-Control-Setup-0.4.0-alpha.30-x64.exe` and a portable ZIP under `artifacts/releases`. Setup installs under Program Files with Start menu shortcuts and an uninstaller. Node and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to Microsoft's download if it is missing.
-
-The package **includes a source-built TPFanCtrl2 2.5.1 with our documented fan-selector patch** and its signed EC module. Setup installs hardware support automatically and configures its service. If PawnIO is absent, setup downloads its official signed installer and verifies its pinned hash and signature. An existing external TPFanControl service is left untouched and reported as a conflict. Firmware retains automatic cooling until you explicitly choose a manual fan level. Installation and selected controls have been exercised on the two target machines; clean-device installation, recovery and the complete validation matrix remain pending. See [observed results](docs/COMPATIBILITY.md).
-
-Hardware access connects by itself when the app opens, with no UAC prompt each time. Setup registers an on-demand scheduled task, under its one approval, that starts a separate hardware worker. The worker exits when the app disconnects, and accepts only your Windows account and the app's bundled runtime. The interface runs without elevation. Windows application control can block unsigned alpha components; trusted signing is required for a public release. Do not disable Windows security features to run this build.
-
-Minimizing sends the app to the tray and preserves manual fan control. Closing the window releases manual control to firmware; saved service curves continue. Choose Exit to stop the app. Uninstall removes the hardware worker task and the owned engine service; user history and the shared PawnIO driver remain. A portable copy does not install privileged hardware support from a user-writable folder.
-
-Upgrades migrate validated fan curves and sensor adjustments onto the new engine
-defaults, with a configuration backup and rollback. See [upgrade behavior](docs/UPGRADES.md).
-
-## Capabilities
-
-| Feature | Availability |
+| Area | Controls and readings |
 | --- | --- |
-| CPU/GPU temperatures, loads and clocks | Sensors exposed through LibreHardwareMonitor and working driver access |
-| Motherboard temperature | Named board/EC sensors only; anonymous slots are not relabeled |
-| Fan RPM | Actual tachometer readings from TPFanCtrl2 or exposed LHM fan sensors |
-| Direct fan levels 1–7 and firmware automatic | Compatible TPFanCtrl2 engine; fresh valid temperature readings required |
-| AC/battery CPU boost policy | Windows processor policy with read-back and rollback |
-| AC/battery CPU speed steps | Windows maximum-frequency policy on AMD and Intel; tested on the 5650U and 6650U on AC, with a 6650U cap discrepancy still under investigation. Hardware P-states are read-only. See [CPU speed steps](docs/CPU-SPEED-STEPS.md) |
-| Independent integrated Radeon boost | Unavailable on these APUs |
-| NVIDIA boost | Driver-gated legacy auto-boost property where supported |
+| Monitor | CPU/GPU temperatures, load, clocks and power where exposed; per-core clock details, sensor Min/Max and local history |
+| Cooling | Measured fan RPM, firmware automatic mode, manual levels and Max cooling, plus saved temperature curves with a Max threshold |
+| CPU & power | Separate AC/battery processor boost, Maximum boost and CPU speed limits; read-back and recovery for policy changes |
+| Ryzen tuning | Firmware power and temperature limits on exact reviewed CPU/table mappings; unsupported or ignored fields stay read-only |
+| Intel | Available telemetry and Windows CPU policies, including supported hybrid processor classes; reviewed PL1/PL2 readings are read-only |
+| Turbo (experimental) | Coordinate Max fan, Maximum boost, no speed cap and supported Ryzen wattage ceilings, with captured settings and explicit Restore |
 
-Missing readings remain unavailable. Manual fan control uses a lease and thermal watchdog; these mechanisms do not replace physical crash, sleep and resume validation. See [compatibility](docs/COMPATIBILITY.md) and [release gates](docs/RELEASE.md).
+The GPU page shows the sensors and controls the driver exposes. Independent integrated Radeon/Intel GPU boost is unavailable; legacy NVIDIA auto-boost is driver gated. A named motherboard sensor is not guaranteed. Missing readings stay unavailable, and a zero tachometer reading does not prove the fan has stopped.
+
+![ThinkPad Control running a simulated Turbo session](docs/images/turbo-demo.png)
+
+*Simulated demo data, not a benchmark or proof of hardware compatibility. The normal application runs in its own desktop window.*
+
+## How performance controls work together
+
+**Processor boost permits higher clocks. CPU speed limit caps what Windows requests.** Turning boost off prevents boosting even if you raise the Ryzen wattage limits. Choosing No limit removes the speed cap; it does not turn boost on. Maximum boost enables boost and asks Windows to favor performance, while retaining the chosen speed cap.
+
+Ryzen power limits set available power headroom, not a guaranteed power draw. Firmware, workload, cooling and other limits still determine actual clocks and sustained wattage. A setting is writable only when the adapter supports it and the requested value can be verified. Restore baseline uses the value observed when hardware access connected, not a hardcoded factory wattage.
+
+[Turbo](docs/TURBO.md) combines the existing controls and saves their previous values before changing them. It does not raise temperature limits or promise continuous boost. **Closing the window returns manual cooling to firmware, but Turbo power settings remain until Restore previous settings is used.** Interrupted sessions retain a recovery action; startup never enables Turbo automatically.
+
+## Getting started
+
+The source is available here. A validated public binary release is still pending; build outputs described below are development candidates.
+
+For an installer build, run `ThinkPad-Control-Setup-0.4.0-alpha.30-x64.exe`. Setup installs under Program Files, adds shortcuts and an uninstaller, and requests administrator approval to install hardware support. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if missing. Initial driver/runtime acquisition needs internet access; normal operation needs no account, browser tab or terminal.
+
+The package includes a source-built **TPFanCtrl2 2.5.1**, our documented fan-selector patch, its signed EC module, credits and matching sources. Setup configures the engine and hardware worker automatically. If PawnIO is absent, its official installer is downloaded and its pinned hash and signature checked. An existing external TPFanControl service is reported as a conflict and left untouched.
+
+Hardware access connects automatically through an on-demand task registered during setup. The interface runs without elevation. Unsigned components may be blocked by Windows application control; do not disable security features to run this preview. Trusted signing remains a planned release milestone.
+
+Start by checking **Overview**, then **Cooling** and **CPU & power**. Review [the desktop guide](docs/DESKTOP.md) for setup, control lifetime and recovery. A portable build must stay in its complete extracted folder and does not install privileged support from a user-writable directory.
+
+- **Minimize:** hides to the tray and keeps manual fan control while telemetry and the lease remain valid.
+- **Close window:** releases manual fan control to firmware. A saved service curve continues.
+- **Exit:** stops the app and its owned background processes. Windows CPU policies and firmware power-limit requests are not a reset-on-exit feature.
+- **Uninstall:** removes the owned task/service and app files; user data and the shared PawnIO driver remain.
+
+Upgrades preserve validated fan curves and adjustments with backups and rollback. See [upgrade behavior](docs/UPGRADES.md).
+
+## Try the interface without hardware access
+
+With Node 24 installed, run either command from the source directory:
+
+```powershell
+npm run demo
+npm run demo -- --demo-intel
+```
+
+Open `http://127.0.0.1:47831`. These clearly labelled simulations do not write hardware settings. No npm dependency installation is needed. The packaged desktop also supports `--demo` and `--demo-intel`.
 
 ## Build and test
 
-Use Windows x64, Node 24.19.0 and .NET SDK 8.0.427 from their official distributions. For an installer, put Inno Setup 6.7.3 under `.tools/inno`. Review its licensing for your build use.
+Use Windows x64, Node **24.19.0**, .NET SDK **8.0.427**, PowerShell 7, Microsoft C++ v143 and Windows SDK **10.0.26100**. Installer builds also need Inno Setup **6.7.3** under `.tools/inno`; review its licensing for your build use.
 
 ```powershell
 ./scripts/fetch-dependencies.ps1
@@ -76,34 +79,25 @@ npm test
 ./scripts/package-source.ps1
 ```
 
-The Windows CI workflow builds unsigned alpha artifacts and runs isolated tests. It never publishes releases or performs hardware writes. All upstream fan-engine assets and matching source archives are pinned by SHA256 in `third-party/dependencies.lock.json`. Source packaging excludes local tools, telemetry, build outputs and private keys. Bit-for-bit reproducible builds are not yet established.
+Windows CI builds unsigned candidates and runs isolated tests. It does not publish releases or change physical hardware. Dependency assets and matching upstream sources are pinned by SHA256. Source packaging excludes local tools, telemetry, build outputs and private keys. Bit-for-bit reproducible builds are not yet established.
 
-For GUI development: `npm run demo` starts a simulated dashboard at `http://127.0.0.1:47831`. No npm dependency installation is needed. `npm start` uses live telemetry and capability-gated controls. The native desktop embeds this same interface in WebView2; users do not need a browser or terminal.
-
-## Architecture and source
+## Architecture and documentation
 
 | Directory | Purpose |
 | --- | --- |
-| `desktop/` | WinForms/WebView2 shell, tray and worker approval |
-| `public/` | Renderer and desktop integration |
-| `src/` | Loopback API, provider orchestration, SQLite schema/history and audit |
-| `native/` | Privileged sensor/policy bridge, private IPC and fan watchdog |
-| `native-tests/`, `tests/` | Isolated fan-protocol, API, policy, IPC and packaging tests |
-| `installer/`, `scripts/` | Installer, dependency verification and build/release tooling |
-| `third-party/` | Pinned dependency metadata and upstream attribution |
-| `docs/` | Architecture, hardware limits and validation/release requirements |
+| `desktop/` | WinForms/WebView2 window, tray and hardware worker connection |
+| `public/` | Desktop interface and renderer integration |
+| `src/` | Loopback API, provider orchestration, SQLite history/audit and Turbo recovery |
+| `native/` | Privileged sensor/policy worker, private IPC and fan watchdog |
+| `native-tests/`, `tests/` | Isolated native, API, UI, recovery and packaging checks |
+| `installer/`, `scripts/` | Setup, dependency verification and release tooling |
+| `third-party/` | Dependency locks, licenses and attribution |
+| `docs/` | Architecture, usage, hardware limits and release evidence |
 
-[System architecture and database schema](docs/ARCHITECTURE.md) · [Desktop guide](docs/DESKTOP.md) · [Release plan](docs/RELEASE.md) · [Signing setup and one-month option](docs/SIGNING.md) · [Dependency review](docs/DEPENDENCY-REVIEW.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Architecture and database schema](docs/ARCHITECTURE.md) · [CPU clocks](docs/CPU-CLOCKS.md) · [Fan curves](docs/FAN-CURVES.md) · [Ryzen support](docs/RYZEN-COMPATIBILITY.md) · [Intel support](docs/INTEL-SUPPORT.md) · [Signing](docs/SIGNING.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
-## Thanks
+## Credits
 
-ThinkPad Control is created by **Matt Cabrices**. Thanks to **troubadix**, original TPFanControl author, and **ThinkPad-Forum, byrnes, Shuzhengz, FanDjango and mews-se** for continuing the fan-control work; **namazso** for PawnIO and its EC module; and the **LibreHardwareMonitor contributors** for sensor access. This app combines their work with a desktop interface and capability-aware controls.
+Thanks to **troubadix**, original TPFanControl author, and **ThinkPad-Forum, byrnes, Shuzhengz, FanDjango and mews-se** for continuing that work; **namazso** for PawnIO and its EC module; and the **LibreHardwareMonitor contributors** for sensor access.
 
-Bundled components retain their own licenses. Packages include upstream notices and matching TPFanCtrl2/PawnIO.Modules source archives. See [full attribution](third-party/README.md) and [third-party notices](THIRD-PARTY-NOTICES.md). This project is not affiliated with Lenovo, AMD, NVIDIA or these upstream projects.
-
-
-
-Advanced Ryzen tuning: the CPU & power page now includes direct SMU controls selected by reviewed Ryzen family and firmware-table capabilities across Lenovo ThinkPads. See [tuning details](docs/RYZEN-TUNING.md) for support, limits, verification and baseline semantics. Zero EC tachometer readings are explicitly marked as unconfirmed rotation; the intermittent firmware-mode zero issue remains under investigation.
-
-
-The exact Ryzen support matrix is documented in [compatibility](docs/RYZEN-COMPATIBILITY.md). Building the patched fan engine requires PowerShell 7, Microsoft C++ v143 and Windows SDK 10.0.26100; run scripts/build-fan-engine.ps1 before the desktop build. Original and modified fan-engine sources and build provenance ship in the package. Local continuation notes and raw host journals are excluded from public source.
+Bundled projects retain their own licenses. Packages include upstream notices and matching TPFanCtrl2/PawnIO.Modules source archives. See [full attribution](third-party/README.md), [third-party notices](THIRD-PARTY-NOTICES.md) and [dependency review](docs/DEPENDENCY-REVIEW.md). ThinkPad Control is not affiliated with Lenovo, AMD, NVIDIA or these upstream projects.

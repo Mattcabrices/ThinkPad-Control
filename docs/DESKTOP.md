@@ -1,24 +1,49 @@
-# ThinkPad Control for Windows — 0.4.0-alpha.22
+# ThinkPad Control for Windows
 
-This is an unsigned development alpha. Run ThinkPad Control.exe from the complete extracted portable folder, or use the installer for Start menu shortcuts and uninstall support. Node.js and .NET runtimes are included. Microsoft WebView2 Runtime is required; setup links to its official download if absent.
+This package is an unsigned development preview. Hardware availability depends on your ThinkPad, firmware and drivers; it is not certified for every model. Normal operation needs no account, browser tab or terminal.
 
-Existing fan-curve sensor adjustments are retained while fresh learning is incomplete. Learning restarts after opening the app or changing engine configuration, waits 15 seconds for readings to settle, and uses a new two-minute observation window. Old mixed slot histories are discarded. New evidence can recommend changes, which still require applying a profile explicitly.
+## Install and connect
 
-CPU frequency uses the same reading throughout the app: the fastest sampled core when per-core telemetry is available. Core average and effective average are shown separately; a Windows-counter fallback is labelled as an estimate. Readings from tools with different sampling intervals need not match exactly. Boost permits higher clocks, while CPU speed limit caps the frequency Windows requests; No limit does not enable boost.
+Run the installer for Start menu shortcuts, automatic hardware setup and uninstall support. It requests administrator approval and installs under Program Files. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if absent.
 
-Setup installs under Program Files with administrator approval. It always installs hardware support: it registers the on-demand hardware worker task and configures the bundled TPFanCtrl2 2.5.1 engine and downloads the official PawnIO driver installer if needed. Driver bytes and Authenticode trust are checked before execution. You can also choose Install or repair fan support in App → Settings after installing the application. Setup results and errors appear in the GUI. A pending reboot requires restarting Windows and retrying fan support setup. Existing external TPFanControl services are not replaced. Hardware setup errors are recorded in hardware-setup-error.txt in the installed app directory. Physical install/upgrade/recovery validation is pending.
+Setup registers an on-demand hardware worker task and configures the bundled source-built TPFanCtrl2 engine. If PawnIO is missing, setup downloads its official signed installer and checks its hash and signature before running it. Initial setup may need internet access. An existing external TPFanControl service is reported as a conflict and is not replaced.
 
-The bundled engine starts in BIOS automatic cooling mode with primary-fan access (SingleFan=1). It does not assume that every ThinkPad has a second fan. The primary-only configuration suppresses the upstream mirrored second tachometer; a second physical fan needs a separately validated adapter. Connect to TPFanCtrl2 in Settings to read measured RPM and request manual levels 1–7. The connection is enabled by default for new desktop settings when the engine is bundled. If its service is absent or stopped, controls remain unavailable. No boost policy or manual fan level is applied automatically.
+Open the app. Hardware access connects through the installed task without a UAC prompt on each launch. The interface stays unprivileged; a separate worker handles permitted hardware operations through private IPC. If setup fails, review the GUI diagnostic and hardware-setup-error.txt in the installed folder. App > Settings offers Repair hardware support. A pending reboot needs a normal Windows restart before retrying; setup does not certify sleep/recovery behavior.
 
-Hardware access connects when the app opens, through that task and with no UAC prompt each time. If no valid task exists, such as in a portable copy or another Windows account, Enable hardware access asks through UAC instead. The interface remains unprivileged. A fresh administrator snapshot is required before the GUI reports the worker connected. A failed connection restores standard access; driver and sensor availability remain separate diagnostics. The worker uses a random private named pipe restricted to your user. It is separate from TPFanCtrl2's always-on SYSTEM service. Unsigned app/worker/engine components may be blocked by Windows application control; this alpha does not disable security settings. Trusted code signing and physical model validation remain release gates.
+A portable copy must remain in its complete extracted folder. It does not install a SYSTEM service from a user-writable directory. If the installed task is unavailable, Enable hardware access may ask through UAC. Unsigned components can be blocked by Windows application control. Do not disable security features to run this preview.
 
-App → Settings opens desktop settings at every window size. Minimizing hides the window in the tray and preserves manual fan control. Closing the window releases owned manual controls to firmware. Native heartbeat renewal continues while minimized, independent of WebView timer throttling; stale telemetry still triggers the watchdog. Double-click the tray icon to reopen. Choose Exit from the app or tray to stop the app and its owned background processes. Manual fans use a lease and thermal watchdog; a killed process cannot guarantee recovery without firmware/engine behavior. Do not treat software tests as physical crash or suspend certification.
+## Read your hardware
 
-Data and the isolated WebView profile live under %LOCALAPPDATA%\ThinkPadControl. Uninstall removes the owned engine service and app files while preserving user data and the shared PawnIO driver. Remove an old 0.2 per-user installation before installing this machine-wide alpha. A portable copy never installs a SYSTEM service from its writable directory.
+Overview shows CPU/GPU temperatures, clocks, power and fan RPM where exposed. All sensors provides detailed readings and session Min/Max. The CPU headline is the fastest sampled core when per-core telemetry is available; individual cores are listed separately. Any Windows-counter fallback is labelled as an estimate. Tools using different sampling intervals may show different values.
 
-CPU boost uses Windows power policy with read-back. Integrated Radeon has no independent boost control on the target APUs. Sensors depend on working driver/firmware access and remain unavailable when not exposed. Anonymous EC temperature slots are not relabeled as motherboard readings. GPU support varies by hardware and driver.
+Unavailable sensors stay unavailable. A firmware thermal zone is not a confirmed motherboard sensor, anonymous EC slots are not relabelled, and GPU VR SoC is not a GPU core temperature. Zero RPM means the tachometer reported zero; it does not prove the fan stopped. Integrated Radeon has no independent boost control on the target APUs. GPU controls depend on the driver.
 
-Failed sensor devices are excluded from the current refresh; their old values are not reused. Other working devices and independent adapters can continue. An incomplete refresh disables experimental LHM manual fan controls and ambiguous APU temperature attribution. Primary TPFanCtrl2 lease checks run independently of the sensor polling lock. A hung sensor provider can still delay the worker's response, and physical failure/recovery testing remains pending.
+## Control cooling
 
-The desktop embeds bundled HTML assets in its own WebView2 window through a random loopback port. Normal operation needs no account, browser tab or terminal. Initial driver/WebView2 acquisition needs network access. For credits, licenses and matching upstream source archives, see notices/fan-engine and THIRD-PARTY-NOTICES.md in notices. Original app code is MIT licensed.
+Cooling offers firmware automatic mode, supported manual fan levels and Max cooling, and saved temperature curves. The bundled configuration uses the primary fan; a second physical fan needs separate validation. Review the selected temperature cutoff before manual use. At that cutoff, lost connection or invalid telemetry, the worker requests firmware control. This does not raise the processor's thermal limit.
 
+Save a curve to keep it as a profile. Apply profile activates the saved curve; Save and apply commits edits and activates them. A saved service curve can continue after the window closes. Existing valid sensor adjustments are retained while fresh learning is incomplete; recommendations do not apply themselves. Firmware mode removes active curve corrections.
+
+- Minimize hides the app to the tray and preserves manual fan control while its lease and temperature checks pass.
+- Close window releases owned manual fan control to firmware. It does not stop an active saved service curve.
+- Double-click the tray icon to reopen. Exit stops the app and its owned background processes.
+
+The lease/watchdog is a protection mechanism, not proof of recovery from every firmware, driver, crash or suspend failure. Physical recovery validation remains incomplete.
+
+## Coordinate CPU controls
+
+Processor boost permits clocks above the normal range. CPU speed limit caps what Windows requests; No limit does not turn boost on. Maximum boost enables boost and favors performance while keeping the selected speed cap. AC and battery policies are separate.
+
+Advanced CPU tuning adapts to the processor. Reviewed Ryzen mappings expose verified power/temperature fields; unsupported or ignored fields stay read-only. Intel PL1/PL2 readings are read-only. Raising a requested limit does not guarantee higher sustained power or clocks. Restore baseline uses the value observed when the hardware worker connected, not a factory default. Reconnect after changing AC/battery source before Ryzen tuning.
+
+Experimental Turbo saves the current settings, requests Max fan, removes the current-source speed cap, enables Maximum boost and raises only supported Ryzen wattage fields to reviewed ceilings. It leaves temperature limits unchanged. Use Restore previous settings to recover the captured policy, wattages and fan mode. If restoration fails, the recovery action remains available.
+
+IMPORTANT: closing, connection loss or the manual cutoff releases manual cooling to firmware, but Turbo power settings remain until restored. Startup never enables Turbo automatically. An interrupted session shows restoration pending. Other tuning controls remain locked until restoration; Return to firmware stays available. Turbo hardware validation is pending.
+
+Windows power policies and firmware power-limit requests may persist after exit. Closing the app is not a reset of those settings. Firmware still makes the final performance decision; continuous boost is not guaranteed.
+
+## Data, removal and credits
+
+Data and the isolated WebView profile live under %LOCALAPPDATA%\ThinkPadControl. Uninstall removes the owned engine service, worker task and application files while preserving user data and the shared PawnIO driver. Upgrades migrate validated curves and adjustments with a backup.
+
+For licenses, credits, matching upstream sources and the fan-engine patch, see the notices folder. Original app code is MIT licensed. Project source and current support details: https://github.com/Mattcabrices/ThinkPad-Control
