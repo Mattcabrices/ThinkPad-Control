@@ -256,6 +256,21 @@ test('telemetry refresh updates filtered sensor readings while search stays focu
   assert.match(textOf(readings.tree),/73\.4/);assert.doesNotMatch(textOf(readings.tree),/GPU core/);assert.equal(state.search,'CPU');assert.equal(renders,1);
 });
 
+test('temperature cards use actual CPU limits and never invent GPU or board health thresholds',async()=>{
+  const snapshot=await new DemoProvider().snapshot();snapshot.cpu.temperature=81;snapshot.ryzen.current.temperatureLimit=100;
+  const context=vm.createContext({state:{snapshot},Number,fmt:String,el:(tag,cls,text)=>({...node(tag,text),className:cls}),icon:()=>node('svg'),sparkline:()=>node('svg'),append:(p,...children)=>{p.append(...children.filter(Boolean));return p;}});
+  vm.runInContext(source.slice(source.indexOf('function metric('),source.indexOf('function chart(')),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],badges=()=>walk(vm.runInContext('metrics()',context)).filter(n=>n.className?.startsWith('metric-health'));
+  assert.equal(badges().length,1);assert.equal(badges()[0].text,'100°C limit');
+  snapshot.cpu.temperature=96;assert.equal(badges()[0].text,'Near CPU limit');
+  snapshot.cpu.temperature=100;assert.equal(badges()[0].text,'At CPU limit');
+  snapshot.ryzen.current.temperatureLimit=86;snapshot.cpu.temperature=82;assert.equal(badges()[0].text,'Near CPU limit');
+  snapshot.ryzen={available:false};snapshot.cpuSteps.hardware.thermalTargetC=95;snapshot.cpu.temperature=80;assert.equal(badges()[0].text,'95°C limit');
+  delete snapshot.cpuSteps.hardware.thermalTargetC;assert.equal(badges().length,0);
+  snapshot.ryzen={current:{temperatureLimit:999}};assert.equal(badges().length,0);
+  snapshot.ryzen.current.temperatureLimit=86;snapshot.cpu.temperature=null;assert.equal(badges().length,0);
+});
+
 test('sensor search matches trimmed source and units, reports counts, and Escape clears without writes or lost ranges',async()=>{
   const snapshot=await new DemoProvider().snapshot();
   snapshot.sensors=[{id:'cpu/temperature',name:'Package',group:'CPU',type:'Temperature',value:55,unit:'°C',source:'Fixture adapter'},

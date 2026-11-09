@@ -102,9 +102,14 @@ function sparkline(select) {
   const d = values.map((value,i) => `${i ? 'L' : 'M'}${(i/(values.length-1)*80).toFixed(1)},${(26-(value-low)/(high-low)*21).toFixed(1)}`).join(' ');
   svg.append(svgEl('path',{d,fill:'none',stroke:'currentColor','stroke-width':1.6})); return svg;
 }
-function metric(title, iconName, value, unit, detail, select, thermal = false, formatValue = fmt) {
+function metric(title, iconName, value, unit, detail, select, thermalLimit = null, formatValue = fmt) {
   const box = el('article','metric'); const head = append(el('div','metric-header'),icon(iconName),el('span','',title));
-  if (thermal && Number.isFinite(value)) head.append(el('span',`metric-health${value >= 80 ? ' warm' : ''}`,value >= 80 ? 'Warm' : 'Normal'));
+  if (Number.isFinite(value) && Number.isFinite(thermalLimit) && thermalLimit>=60 && thermalLimit<=115) {
+    const atLimit=value>=thermalLimit, nearLimit=value>=thermalLimit-5;
+    const badge=el('span',`metric-health${nearLimit?' warm':''}`,atLimit?'At CPU limit':nearLimit?'Near CPU limit':`${fmt(thermalLimit)}°C limit`);
+    badge.title=`Reported CPU temperature limit: ${fmt(thermalLimit)}°C. This is a firmware limit, not a guarantee of sustained performance.`;
+    head.append(badge);
+  }
   box.append(head);
   const number = append(el('div','metric-number'),el('strong',Number.isFinite(value) ? '' : 'metric-unknown',formatValue(value)),el('span','',unit));
   append(box,number,el('div','metric-detail',detail),select ? sparkline(select) : null); return box;
@@ -113,9 +118,9 @@ function systemThermal(s) { return s.motherboard?.temperature ?? s.firmware?.tem
 function metrics() {
   const s = state.snapshot, gpu = s.gpus[0], fan = s.fans[0];
   return append(el('div','metrics-grid'),
-    metric('CPU temperature','cpu',s.cpu.temperature,'°C',s.cpu.temperature === null ? 'Sensor not exposed' : 'CPU package',h=>h.cpu.temperature,true),
-    metric('GPU temperature','gpu',gpu?.temperature,'°C',gpu?.temperature == null ? 'Sensor not exposed' : 'GPU core',h=>h.gpus[0]?.temperature,true),
-    metric(s.motherboard.temperature == null && s.firmware?.temperature != null ? 'Firmware thermal zone' : 'Motherboard','board',systemThermal(s),'°C',s.motherboard.temperature != null ? 'System temperature' : s.firmware?.temperature != null ? (s.firmware.zone + ' · ACPI') : 'Sensor not exposed',systemThermal,true),
+    metric('CPU temperature','cpu',s.cpu.temperature,'°C',s.cpu.temperature === null ? 'Sensor not exposed' : 'CPU package',h=>h.cpu.temperature,s.ryzen?.current?.temperatureLimit??s.cpuSteps?.hardware?.thermalTargetC),
+    metric('GPU temperature','gpu',gpu?.temperature,'°C',gpu?.temperature == null ? 'Sensor not exposed' : 'GPU core',h=>h.gpus[0]?.temperature),
+    metric(s.motherboard.temperature == null && s.firmware?.temperature != null ? 'Firmware thermal zone' : 'Motherboard','board',systemThermal(s),'°C',s.motherboard.temperature != null ? 'System temperature' : s.firmware?.temperature != null ? (s.firmware.zone + ' · ACPI') : 'Sensor not exposed',systemThermal),
     metric('Fan speed','fan',fan?.rpm,'RPM',fan ? fan.rpm === 0 ? 'Tachometer reports zero · rotation unconfirmed' : fan.mode === 'auto' ? 'Firmware controlled' : fan.mode === 'manual' ? 'Manual control' : fan.mode === 'curve' ? 'Fan curve' : 'Read-only tachometer' : 'No fan sensor exposed',h=>h.fans[0]?.rpm));
 }
 function chart() {
@@ -494,7 +499,7 @@ function gpuPanels() {
   for (const gpu of state.snapshot.gpus) {
     const box=panel(gpu.name,'gpu',`${gpu.vendor} graphics`);box.classList.add('control-panel');
     const grid=el('div','detail-grid');
-    append(grid,metric('GPU temperature','temperature',gpu.temperature,'°C','Core temperature',null,true),metric('GPU utilization','gpu',gpu.load,'%','Graphics load'),metric('Core clock','sensors',gpu.clock,'MHz','Current frequency'));
+    append(grid,metric('GPU temperature','temperature',gpu.temperature,'°C','Core temperature'),metric('GPU utilization','gpu',gpu.load,'%','Graphics load'),metric('Core clock','sensors',gpu.clock,'MHz','Current frequency'));
     const inside=el('div','big-info'); inside.append(grid); box.append(inside);
     append(box,switchControl('Independent GPU boost','Driver default auto-boost policy. Availability depends on the GPU and driver.',gpu.boost,gpu.boostCapability,()=>command({type:'gpu-boost',id:gpu.id,enabled:!gpu.boost})));
     if (gpu.memoryTotal!=null) box.append(el('div','big-info',`Video memory: ${fmt(gpu.memoryUsed)} / ${fmt(gpu.memoryTotal)} MB${gpu.power!=null ? ` · GPU power: ${fmt(gpu.power,1)} W` : ''}`));
