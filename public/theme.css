@@ -284,6 +284,7 @@ pre { padding: 5px 7px; border-radius: var(--radius); background: var(--surface-
   .nav-button > span, .sidebar-bottom { display: none; }
   .machine-tag span:last-child { display: none; }
   .topbar, main { padding-left: var(--gap); padding-right: var(--gap); }
+  #enable-hardware { display: none; } /* Available from the native Hardware menu at every window size. */
   .metric { padding: 5px var(--gap); }
 }
 @media (max-width: 520px) {
@@ -325,3 +326,4 @@ pre { padding: 5px 7px; border-radius: var(--radius); background: var(--surface-
 .control-panel:focus-within {border-color:var(--border)}
 @media(max-width:640px) {.panel-heading:has(.sensor-tools){align-items:flex-start;gap:8px;flex-wrap:wrap}.sensor-tools{width:100%}.sensor-tools .search{flex:1;min-width:0}.profile-top .mode-select{max-width:100%;flex:1}.fan-actions .button{white-space:normal}.tuning-readings{gap:5px 12px}}.boost-section-label {padding:6px var(--pad);margin:0;border-top:1px solid var(--border-soft);background:var(--surface-alt);font-size:var(--text-small);line-height:1.45}
 .turbo-actions {padding:0 var(--pad) 6px}.turbo-panel .panel-pill {white-space:nowrap}.turbo-panel>.step-note {padding:0 var(--pad)}
+@media(min-width:521px) {.detail-grid {grid-template-columns:repeat(3,minmax(0,1fr))}}
