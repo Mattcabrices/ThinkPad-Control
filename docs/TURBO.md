@@ -1,8 +1,10 @@
 # Turbo
 
 Turbo coordinates existing controls in one action with a saved restoration record.
-Alpha.30 introduces it experimentally. Installed Turbo hardware validation is
-pending; the alpha.29 fan-handover test does not certify this new feature.
+Alpha.30 introduced it experimentally. The first installed alpha.33 attempt
+aborted with an app-connection lease error; automatic rollback and independent
+restoration checks passed. Successful installed activation remains unverified.
+See [current validation results](RELEASE-VALIDATION.md) for the exact scope.
 
 ## Activation
 

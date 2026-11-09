@@ -1,7 +1,7 @@
 # Release preparation
 
 The current source is **0.4.0-alpha.33**, an unsigned development preview.
-The latest installed hardware check is alpha.32. Automated tests and
+The latest installed hardware check is alpha.33. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
@@ -20,7 +20,8 @@ binary release is published at the time of this November 9, 2026 audit.
 - Firmware/manual/Max fan control, saved service curves with a Max threshold and
   a configurable manual cutoff. Unknown thermal limits use an 85°C fallback.
 - Experimental [Turbo](TURBO.md), with captured prior settings and explicit Restore.
-  Its installed hardware activation/restoration test remains pending.
+  Its first installed activation aborted with a connection lease error; rollback
+  was verified. Successful activation still needs investigation and retesting.
 - The pinned source-built TPFanCtrl2 2.5.1 with the documented fan-selector patch,
   unmodified signed EC module, original/modified sources, licenses and credits.
   See [dependency review](DEPENDENCY-REVIEW.md).
@@ -95,8 +96,8 @@ publisher trust. Bit-for-bit reproducible builds are not yet established.
 | Automated build and failure-path coverage | Current evidence in [release validation](RELEASE-VALIDATION.md) | Rerun for final source/signing output |
 | GUI clarity and layout | Actual Ryzen/Intel demo captures, minimum-window and high-DPI checks | Owner review; no hardware compatibility inference |
 | Missing-driver download/trust gates | Mocked setup branch plus actual data-only SHA/signature checks | Real fresh-driver install and cleanup on a clean device |
-| Installed telemetry and fan handover | Scoped alpha.29 T14s results; earlier T14 Gen 3 observations | Current build on both Ryzen targets and real Intel hardware |
-| Turbo | Isolated activation, rollback, restart and failure tests | Separately approved installed activation and complete read-back/restore |
+| Installed telemetry and fan handover | Alpha.33 upgrade/telemetry preservation and alpha.30 T14s fan handover; earlier T14 Gen 3 observations | Current build on both Ryzen targets and real Intel hardware |
+| Turbo | First alpha.33 activation aborted; automatic rollback independently verified; isolated activation/recovery tests | Resolve connection lease failure and pass owner-approved installed activation/restoration |
 | Battery and physical recovery | Partial historical/isolated coverage | AC/battery, longer sessions, sensor/worker/service loss, crash exhaustion, sleep/resume/reboot matrix |
 | Upgrade/uninstall and account scope | Prior approved upgrades and ownership tests | Clean-device, independent uninstall, standard-user/alternate-account validation |
 | Trusted distribution | Signing tooling prepared | Publisher identity, real signing/timestamps and clean-policy acceptance |

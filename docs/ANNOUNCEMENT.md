@@ -20,7 +20,7 @@ It brings together:
 - Advanced Ryzen power limits on reviewed CPU/firmware mappings. Unsupported settings stay read-only. Intel systems get the available monitoring and Windows CPU controls; direct Intel wattage tuning is not implemented.
 - An experimental Turbo preset that coordinates Max fan, boost, speed caps and supported Ryzen wattage limits, then offers Restore previous settings.
 
-This is an unsigned development preview, not a finished universal ThinkPad controller. Initial hardware observations are on the T14s Gen 2 AMD and T14 Gen 3 AMD. Other models need validation, and sensor availability depends on firmware and drivers. Turbo currently has isolated test coverage; installed hardware validation is still pending. Raising a wattage request does not guarantee that firmware will allow a higher sustained power draw.
+This is an unsigned development preview, not a finished universal ThinkPad controller. Initial hardware observations are on the T14s Gen 2 AMD and T14 Gen 3 AMD. Other models need validation, and sensor availability depends on firmware and drivers. Turbo has isolated test coverage, but its first installed attempt aborted with a connection lease error. Rollback was verified; successful installed activation remains unproven. Raising a wattage request does not guarantee that firmware will allow a higher sustained power draw. See the [validation report](RELEASE-VALIDATION.md).
 
 The source is available now; a validated public installer release is still pending. You can run a clearly labelled demo without changing hardware settings. The repository includes build instructions, support details and the current release checklist.
 

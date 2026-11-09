@@ -1,5 +1,50 @@
 # Release validation
 
+## Current evidence — alpha.33, November 9, 2026
+
+The tested application is `0.4.0-alpha.33+7f36286f25a6a5ffc0c19c2b0abd2ef2436bce00`.
+Later documentation-only commits do not change that binary's identity. Older
+sections below are historical results, not additional current-device certification.
+
+| Check | Result | Evidence/scope |
+| --- | --- | --- |
+| JavaScript regressions | 233 pass; zero failures/skips | [Hosted Windows run](https://github.com/Mattcabrices/ThinkPad-Control/actions/runs/42682162143) |
+| Isolated native assertions | 293 pass | Same hosted run; no hardware writes |
+| GUI | 40 actual Ryzen/Intel demo captures pass | Wide/compact views and Settings; native menu overlap checked; simulated readings |
+| Build and archive integrity | Pass | 114 staged payload, 115 portable and 144 public source files verified |
+| Installed upgrade/hardware setup | Pass; no reboot | Owner-approved T14s Gen 2 Ryzen 5 PRO 5650U; 113 immutable installed files matched, mutable INI checked separately |
+| Installation preservation | Pass | Policies, Ryzen limits, profiles, manual cutoff, fan mode and exact INI compared with immediate pre-upgrade capture |
+| Installed Turbo activation | **Not passed** | One owner-approved attempt, described below; no automatic retry |
+| Turbo rollback/restoration | Pass for this attempt | Automatic rollback plus independent final comparison; no recovery pending |
+| Trusted signing | Open | Current binaries remain unsigned |
+| Broad hardware/recovery support | Open | Clean-device, Intel/other Ryzen and full physical recovery matrix still required |
+
+### Installed Turbo attempt, 16:15–16:16 ET
+
+The owner approved a short Turbo → Restore check without a stress workload.
+A fresh preflight verified hardware access, no pending recovery, no manual fan
+owner and Turbo availability. The app proposed Max fan, current-source boost/speed
+policy changes, PPT fast 40 W and PPT slow 30 W; STAPM remained read-only.
+These wattages are app ceilings, not hardware-rated maxima.
+
+The single enable request returned HTTP 409. Activity recorded:
+“The app connection was lost during Turbo activation. Previous settings restored
+and verified.” Turbo never reached verified-active state. The cause of the lease
+loss needs investigation; this result does not establish whether firmware would
+accept the higher wattage requests. No activation was replayed.
+
+The independent final comparison passed for the complete AC/DC policy (including
+caps/EPP and processor-class fields), boost recovery metadata, all four Ryzen
+limits, saved profiles, manual cutoff, exact curve/masks, original firmware fan
+mode and fan INI bytes. No manual fan remained owned, Turbo was off, and no
+recovery was pending. No stress, suspend or reboot was performed.
+
+Raw machine snapshots remain private. Their evidence identifiers are
+`turbo-physical-20261109-161556/result.json`, `activity.json`, `before.json`,
+`final.json` and `before.ini`; they are excluded from public source archives.
+The failed activation must be investigated and successfully retested before
+claiming installed Turbo support. Rollback success alone is not an activation pass.
+
 ## Alpha.30 installed check — November 9, 2026
 
 The owner approved upgrading the T14s Gen 2 Ryzen 5 PRO 5650U to

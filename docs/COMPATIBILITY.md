@@ -14,6 +14,10 @@
 
 Target models are not claims of certified compatibility. The following observations supersede the earlier unelevated discovery checks. Missing or unidentified sensors remain unavailable.
 
+For the latest alpha.33 installed upgrade and failed Turbo attempt with verified
+rollback, see [current validation results](RELEASE-VALIDATION.md). The older model
+observations below do not imply successful current Turbo activation.
+
 | Machine and tested build | Observed on hardware | Still open |
 | --- | --- | --- |
 | T14s Gen 2 AMD, Ryzen 5 PRO 5650U; alpha.2 installed | Elevated PawnIO access; CPU and APU GFX temperatures; ACPI thermal zone; real tachometer readings and manual fan control; Windows power policies; fast/slow/thermal SMU changes and restoration; read-only P-states | Audible fan versus zero RPM, cancelled/approved reconnect, battery behavior, full recovery matrix. Sustained limit is read-only after both reviewed routes were ignored. |

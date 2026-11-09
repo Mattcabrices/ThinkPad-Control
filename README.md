@@ -8,6 +8,11 @@ Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
 **Current status: 0.4.0-alpha.33, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
+**Latest installed check:** an alpha.33 Turbo attempt on the T14s Gen 2 aborted
+with an app-connection lease error. Automatic rollback and an independent settings
+comparison passed. Successful Turbo activation and higher-wattage acceptance remain
+unverified. See the [current results and evidence](docs/RELEASE-VALIDATION.md).
+
 ## What you can do
 
 | Area | Controls and readings |
