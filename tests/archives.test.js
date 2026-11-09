@@ -18,7 +18,7 @@ test('archive verifier accepts complete builds and rejects missing, changed, pri
     const payload=['LICENSE','engine/TPFanControl.exe','engine/LpcACPIEC.bin','engine/TPFanControl.ini','notices/fan-engine/TPFanCtrl2-source.zip','notices/fan-engine/TPFanCtrl2-patched-source.zip','notices/fan-engine/fan-engine-build.lock.json','notices/fan-engine/TPFanCtrl2-single-fan.patch','notices/fan-engine/PawnIO.Modules-source.zip','notices/fan-engine/PawnIO.Modules-LGPL-2.1.txt'];
     for(const file of payload)write('stage/'+file);
     write('stage/package-manifest.json',JSON.stringify(payload.map(path=>({path,sha256:createHash('sha256').update('fixture').digest('hex')}))));
-    const command=`$ErrorActionPreference='Stop'; $root='${root.replaceAll("'","''")}';
+    const command=`$ErrorActionPreference='Stop'; $root=[IO.Path]::GetFullPath('${root.replaceAll("'","''")}');
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $pack=Join-Path $root 'scripts/package-source.ps1'; $verify=Join-Path $root 'scripts/verify-archives.ps1'; $stage=Join-Path $root 'stage'
 $list=@(& $pack -ListFiles)
@@ -27,6 +27,9 @@ $source=& $pack; $portable=Join-Path $root 'portable.zip'
 $zip=[IO.Compression.ZipFile]::Open($portable,[IO.Compression.ZipArchiveMode]::Create)
 try {Get-ChildItem -LiteralPath $stage -File -Recurse|ForEach-Object{[void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$_.FullName,$_.FullName.Substring($stage.Length+1).Replace('\\','/'))}}finally{$zip.Dispose()}
 & $verify -PackageRoot $stage -PortablePath $portable -SourcePath $source | Out-Null
+$fileSystem=New-Object -ComObject Scripting.FileSystemObject
+$shortStage=$fileSystem.GetFolder($stage).ShortPath
+& $verify -PackageRoot $shortStage -PortablePath $portable -SourcePath $source | Out-Null
 $count=0
 foreach($kind in @('portable','source')){
  foreach($mode in @('missing','changed','size','extra','private','duplicate','case','traversal','absolute','backslash','symlink','directory','directory-data')){
