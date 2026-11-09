@@ -11,7 +11,7 @@ foreach ($entry in $manifest) {
     if (-not $seen.Add($path)) { throw 'Manifest contains a duplicate file.' }
     if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $entry.sha256) { throw "Package file modified: $($entry.path)" }
 }
-foreach ($required in @('LICENSE','engine\TPFanControl.exe','engine\LpcACPIEC.bin','engine\TPFanControl.ini','notices\fan-engine\TPFanCtrl2-source.zip','notices\fan-engine\TPFanCtrl2-patched-source.zip','notices\fan-engine\fan-engine-build.lock.json','notices\fan-engine\TPFanCtrl2-single-fan.patch','notices\fan-engine\PawnIO.Modules-source.zip','notices\fan-engine\PawnIO.Modules-LGPL-2.1.txt')) {
+foreach ($required in @('scripts\asset-download.ps1','LICENSE','engine\TPFanControl.exe','engine\LpcACPIEC.bin','engine\TPFanControl.ini','notices\fan-engine\TPFanCtrl2-source.zip','notices\fan-engine\TPFanCtrl2-patched-source.zip','notices\fan-engine\fan-engine-build.lock.json','notices\fan-engine\TPFanCtrl2-single-fan.patch','notices\fan-engine\PawnIO.Modules-source.zip','notices\fan-engine\PawnIO.Modules-LGPL-2.1.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $required))) { throw "Release component missing: $required" }
 }
 if ($RequireTrustedSignatures) {

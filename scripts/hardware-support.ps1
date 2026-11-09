@@ -94,7 +94,8 @@ if ($ini -notmatch '(?m)^Active=[12]\r?$' -or $ini -notmatch '(?m)^PortBackend=p
 $driver = Get-Service -Name PawnIO -ErrorAction SilentlyContinue
 if ($null -eq $driver) {
     # Random private directory, no fixed reusable temp executable for an elevated launch.
-    $downloadRoot = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) ('ThinkPadControl\Setup-'+[guid]::NewGuid().ToString('N'))
+    # Its parent is the already-validated protected installation, not shared ProgramData.
+    $downloadRoot = Join-Path $appRoot ('Setup-'+[guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
     $acl = New-Object Security.AccessControl.DirectorySecurity
     $acl.SetAccessRuleProtection($true,$false)
@@ -105,12 +106,8 @@ if ($null -eq $driver) {
     Set-Acl -LiteralPath $downloadRoot -AclObject $acl
     $setup = Join-Path $downloadRoot 'PawnIO_setup.exe'
     try {
-        Invoke-WebRequest -UseBasicParsing -Uri $lock.driverPrerequisite.url -OutFile $setup
-        if ((Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash -ne $lock.driverPrerequisite.sha256) { throw 'Official driver installer hash mismatch.' }
-        if ((Get-AuthenticodeSignature -LiteralPath $setup).Status -ne 'Valid') { throw 'Official driver installer signature is not trusted by Windows.' }
-        $process = Start-Process -FilePath $setup -ArgumentList '-install','-silent' -WindowStyle Hidden -Wait -PassThru
-        if ($process.ExitCode -eq 3010) { throw 'PawnIO requires a Windows restart. Restart, then rerun setup to enable the fan engine.' }
-        if ($process.ExitCode -ne 0) { throw "PawnIO setup failed ($($process.ExitCode))." }
+        . (Join-Path $PSScriptRoot 'asset-download.ps1')
+        Invoke-VerifiedDriverSetup -Prerequisite $lock.driverPrerequisite -Path $setup
     } finally {
         # Only these known files; never recursively delete a computed elevated path.
         if (Test-Path -LiteralPath $setup) { Remove-Item -LiteralPath $setup -Force }

@@ -6,7 +6,7 @@ This package is an unsigned development preview. Hardware availability depends o
 
 Run the installer for Start menu shortcuts, automatic hardware setup and uninstall support. It requests administrator approval and installs under Program Files. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if absent.
 
-Setup registers an on-demand hardware worker task and configures the bundled source-built TPFanCtrl2 engine. If PawnIO is missing, setup downloads its official signed installer and checks its hash and signature before running it. Initial setup may need internet access. An existing external TPFanControl service is reported as a conflict and is not replaced.
+Setup registers an on-demand hardware worker task and configures the bundled source-built TPFanCtrl2 engine. If PawnIO is missing, setup downloads its official signed installer and checks its hash and signature before running it. Temporary download failures are retried; setup stops if verification fails. Initial setup may need internet access. An existing external TPFanControl service is reported as a conflict and is not replaced.
 
 Open the app. Hardware access connects through the installed task without a UAC prompt on each launch. The interface stays unprivileged; a separate worker handles permitted hardware operations through private IPC. If setup fails, review the GUI diagnostic and hardware-setup-error.txt in the installed folder. App > Settings offers Repair hardware support. A pending reboot needs a normal Windows restart before retrying; setup does not certify sleep/recovery behavior.
 

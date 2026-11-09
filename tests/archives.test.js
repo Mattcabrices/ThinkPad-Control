@@ -15,7 +15,7 @@ test('archive verifier accepts complete builds and rejects missing, changed, pri
     for(const file of ['README.md','LICENSE','THIRD-PARTY-NOTICES.md','SECURITY.md','CONTRIBUTING.md','NuGet.Config','.gitignore','signing/artifact-signing.example.json','signing/metadata.example.json','signing/certificate-store.example.json'])write(file);
     write('package.json',JSON.stringify({version:'0.0.0-fixture'}));
     for(const script of ['package-source.ps1','verify-archives.ps1','verify-release.ps1'])cpSync(join('scripts',script),join(root,'scripts',script));
-    const payload=['LICENSE','engine/TPFanControl.exe','engine/LpcACPIEC.bin','engine/TPFanControl.ini','notices/fan-engine/TPFanCtrl2-source.zip','notices/fan-engine/TPFanCtrl2-patched-source.zip','notices/fan-engine/fan-engine-build.lock.json','notices/fan-engine/TPFanCtrl2-single-fan.patch','notices/fan-engine/PawnIO.Modules-source.zip','notices/fan-engine/PawnIO.Modules-LGPL-2.1.txt'];
+    const payload=['scripts/asset-download.ps1','LICENSE','engine/TPFanControl.exe','engine/LpcACPIEC.bin','engine/TPFanControl.ini','notices/fan-engine/TPFanCtrl2-source.zip','notices/fan-engine/TPFanCtrl2-patched-source.zip','notices/fan-engine/fan-engine-build.lock.json','notices/fan-engine/TPFanCtrl2-single-fan.patch','notices/fan-engine/PawnIO.Modules-source.zip','notices/fan-engine/PawnIO.Modules-LGPL-2.1.txt'];
     for(const file of payload)write('stage/'+file);
     write('stage/package-manifest.json',JSON.stringify(payload.map(path=>({path,sha256:createHash('sha256').update('fixture').digest('hex')}))));
     const command=`$ErrorActionPreference='Stop'; $root=[IO.Path]::GetFullPath('${root.replaceAll("'","''")}');

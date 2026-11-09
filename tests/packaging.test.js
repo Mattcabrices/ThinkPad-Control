@@ -17,6 +17,7 @@ test('dependency downloads retry transient failures but never accept partial or 
     for(const mode of ['transient','permanent','corrupt']) {
       const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
       cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
+      cpSync('scripts/asset-download.ps1',join(fixture,'scripts/asset-download.ps1'));
       writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url:'https://invalid.example/never-contacted',sha256:hash}]}));
       const command=`Set-StrictMode -Version Latest;$ErrorActionPreference='Stop';$global:attempts=0;$global:delays=@();
 function Start-Sleep {param($Seconds) $global:delays+= $Seconds}
@@ -178,6 +179,7 @@ test('pinned release API fallback handles transport outages without accepting wr
     for(const mode of ['primary','fallback','http-client','api-corrupt','both-fail','primary-corrupt','not-found','not-found-direct','bad-id','wrong-host','http','credentials','query','bad-cache']){
       const fixture=join(root,mode);mkdirSync(join(fixture,'scripts'),{recursive:true});mkdirSync(join(fixture,'third-party'));
       cpSync('scripts/fetch-dependencies.ps1',join(fixture,'scripts/fetch-dependencies.ps1'));
+      cpSync('scripts/asset-download.ps1',join(fixture,'scripts/asset-download.ps1'));
       const url=mode==='wrong-host'?'https://other.example/owner/repo/releases/download/v1/asset.bin':mode==='http'?'http://github.com/owner/repo/releases/download/v1/asset.bin':mode==='credentials'?'https://user:secret@github.com/owner/repo/releases/download/v1/asset.bin':mode==='query'?'https://github.com/owner/repo/releases/download/v1/asset.bin?token=fixture':'https://github.com/owner/repo/releases/download/v1/asset.bin';
       writeFileSync(join(fixture,'third-party/dependencies.lock.json'),JSON.stringify({assets:[{file:'asset.bin',url,releaseAssetId:mode==='bad-id'?'1;invalid':123,sha256:expected}]}));
       if(mode==='bad-cache'){mkdirSync(join(fixture,'.tools/dependencies'),{recursive:true});writeFileSync(join(fixture,'.tools/dependencies/asset.bin'),'tampered');}

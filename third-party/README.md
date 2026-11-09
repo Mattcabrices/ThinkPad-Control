@@ -24,7 +24,12 @@ API for that same repository and pinned asset ID, with at most three attempts.
 No credentials are sent. The original SHA256 remains mandatory before bytes
 enter the verified cache. Wrong hashes, invalid fallback metadata and permanent
 HTTP errors fail closed; fallback never selects a newer or different binary.
-This is build-download resilience, not a change to runtime hardware setup.
+The same import-only downloader is packaged for hardware setup. When PawnIO is
+missing, setup downloads its pinned installer through these reviewed routes,
+then verifies both SHA256 and Windows signature trust before its single launch.
+Temporary installer bytes stay in an administrator/SYSTEM-only directory beneath
+the protected installation and are removed afterward. Network retries do not
+retry installer execution, suppress restart-required results or weaken trust.
 
 The PawnIO driver installer is **not redistributed**. Hardware setup
 downloads the official signed 2.2.0 installer, verifies its pinned SHA256 and

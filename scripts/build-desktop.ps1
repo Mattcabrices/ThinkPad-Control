@@ -65,6 +65,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.md') -Destin
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $stage
 New-Item -ItemType Directory -Force (Join-Path $stage 'scripts') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'hardware-support.ps1') -Destination (Join-Path $stage 'scripts')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'asset-download.ps1') -Destination (Join-Path $stage 'scripts')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'migrate-engine-config.ps1') -Destination (Join-Path $stage 'scripts')
 & (Join-Path $PSScriptRoot 'stage-fan-engine.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party\nuget-inventory.json') -Destination (Join-Path $stage 'notices')

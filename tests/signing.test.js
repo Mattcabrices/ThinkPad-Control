@@ -13,7 +13,7 @@ const ps=(script,args=[])=>spawnSync('powershell.exe',['-NoProfile','-NonInterac
 test('release verification rejects changed and unmanifested package files', {skip:!windows},()=>{
   const root=mkdtempSync(join(tmpdir(),'thinkpad-release-'));
   try {
-    const paths=['LICENSE','engine/TPFanControl.exe','engine/LpcACPIEC.bin','engine/TPFanControl.ini','notices/fan-engine/TPFanCtrl2-source.zip','notices/fan-engine/TPFanCtrl2-patched-source.zip','notices/fan-engine/fan-engine-build.lock.json','notices/fan-engine/TPFanCtrl2-single-fan.patch','notices/fan-engine/PawnIO.Modules-source.zip','notices/fan-engine/PawnIO.Modules-LGPL-2.1.txt'];
+    const paths=['scripts/asset-download.ps1','LICENSE','engine/TPFanControl.exe','engine/LpcACPIEC.bin','engine/TPFanControl.ini','notices/fan-engine/TPFanCtrl2-source.zip','notices/fan-engine/TPFanCtrl2-patched-source.zip','notices/fan-engine/fan-engine-build.lock.json','notices/fan-engine/TPFanCtrl2-single-fan.patch','notices/fan-engine/PawnIO.Modules-source.zip','notices/fan-engine/PawnIO.Modules-LGPL-2.1.txt'];
     const manifest=paths.map(path=>{
       mkdirSync(dirname(join(root,path)),{recursive:true});const data=Buffer.from('fixture');writeFileSync(join(root,path),data);
       return {path,sha256:createHash('sha256').update(data).digest('hex')};
@@ -24,6 +24,9 @@ test('release verification rejects changed and unmanifested package files', {ski
     const extra=ps('scripts/verify-release.ps1',['-PackageRoot',root]);assert.notEqual(extra.status,0);assert.match(extra.stderr,/unmanifested/);
     rmSync(join(root,'extra.txt'));writeFileSync(join(root,'LICENSE'),'modified');
     const changed=ps('scripts/verify-release.ps1',['-PackageRoot',root]);assert.notEqual(changed.status,0);assert.match(changed.stderr,/Package file modified/);
+    writeFileSync(join(root,'LICENSE'),'fixture');rmSync(join(root,'scripts/asset-download.ps1'));
+    writeFileSync(join(root,'package-manifest.json'),JSON.stringify(manifest.filter(entry=>entry.path!=='scripts/asset-download.ps1')));
+    const missingHelper=ps('scripts/verify-release.ps1',['-PackageRoot',root]);assert.notEqual(missingHelper.status,0);assert.match(missingHelper.stderr,/Release component missing:.*asset-download/);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
 
