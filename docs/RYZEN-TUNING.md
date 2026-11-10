@@ -19,6 +19,11 @@ hardware-rated or guaranteed accepted maximum. The current adapter does not
 expose a verified hardware maximum. Read-only fields remain disabled even when
 their app ceiling is displayed.
 
+Alpha.36 separately displays optional [firmware-reported power ranges](FIRMWARE-POWER-LIMITS.md)
+for named profiles. These are advisory OEM capability ranges, not SMU maximum
+ratings, and do not change the writable ranges above. Missing metadata remains
+Not reported. CPU SPL, APU SPL and STAPM are not silently treated as the same limit.
+
 ## Boundaries and verification
 
 The worker uses the existing LHM 0.9.6 signed embedded RyzenSMU module through an original MIT transport. It checks every IOCTL result and returned length, takes the shared Global\Access_PCI mutex and uses bounded waits. Only fixed, family-selected commands/register addresses exist internally. No arbitrary register or mailbox API is exposed to the UI, local HTTP API or private pipe. No additional tuning driver is installed.

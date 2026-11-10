@@ -221,6 +221,21 @@ function clockGhz(mhz) { return Number.isFinite(mhz)?(mhz/1000).toFixed(2):'—'
 function clockCaption(clock) {
   return clock?.source==='core-sensors'||clock?.source==='core-max-sensor'?'Highest current core clock':clock?.label??'Clock unavailable';
 }
+function firmwarePowerLimitsPanel() {
+  const report=state.snapshot.firmwarePowerLimits;
+  const rows=report?.available&&Array.isArray(report.limits)?report.limits:[];
+  const box=panel('Firmware-reported maximums','power','Power ranges reported by the laptop, separate from app tuning limits.',el('span','panel-pill',rows.length?'REPORTED':report?.status==='discovering'?'CHECKING':'NOT REPORTED'));
+  const labels={cpuSustainedWatts:'CPU sustained · SPL',apuSustainedWatts:'APU sustained · SPL',cpuAverageWatts:'CPU average · SPPT',cpuBurstWatts:'CPU burst · FPPT'};
+  if(!rows.length)box.append(el('p','metric-detail',report?.reason||'Not reported by this firmware.'));
+  for(const row of rows){
+    if(!labels[row.field]||!Number.isFinite(row.maximumWatts))continue;
+    box.append(append(el('div','step-source'),append(el('div','step-head'),el('strong','',`${labels[row.field]} · ${row.profile}`),el('span','',`${fmt(row.maximumWatts,1)} W maximum`)),
+      el('p','metric-detail',`Firmware range ${fmt(row.minimumWatts,1)}–${fmt(row.maximumWatts,1)} W · Default ${fmt(row.defaultWatts,1)} W · Step ${fmt(row.stepWatts,1)} W`)));
+  }
+  const help=el('details','control-help');
+  append(help,el('summary','','About these limits'),el('p','','These are firmware-allowed settings for the listed profiles, not an absolute hardware rating or guaranteed sustained power. The active profile is not inferred. A CPU sustained limit and an APU sustained limit are separate controls.'),el('p','','Detection is read-only. It does not change tuning ranges, switch profiles, raise power, or enable unsupported controls. Missing firmware data is shown as Not reported.'));
+  box.append(help);return box;
+}
 function stepsPanel() {
   const snapshot=state.snapshot, s=snapshot.cpuSteps, cap=snapshot.capabilities.cpuStep, box=panel('CPU speed limit','cpu','Choose how fast the CPU may run. Lower steps run cooler and quieter, and use less power.'); box.classList.add('control-panel');
   if (!s?.policy||!cap?.available) {box.append(el('p','big-info',cap?.reason||'Speed limits are unavailable on this system.'));return box;}
@@ -641,7 +656,7 @@ function render(force=false) {
     parts.push(append(el('section','panel device-summary'),append(el('div','device-icon'),icon('cpu')),append(el('div'),el('h3','',s.cpu.name),el('p','',`${fmt(s.cpu.load)}% CPU load · ${clockGhz(s.cpu.clock)} GHz (${clockCaption(s.cpu.clockDetails)}) · ${fmt(s.cpu.power,1)} W package power`)),button('View all sensors →','text-button',()=>navigate('sensors'))));
   } else if(state.view==='cpu') {
     parts.push(append(el('div','detail-grid'),metric('CPU utilization','cpu',s.cpu.load,'%','Total processor load'),metric('CPU speed','sensors',s.cpu.clock,'GHz',clockCaption(s.cpu.clockDetails),undefined,false,clockGhz),metric('Package power','power',s.cpu.power,'W','CPU package power')),
-      turboPanel(),stepsPanel(),boostPanel(true),...(showCpuTuning(s)?[advancedCpuTuning()]:[]),chart());
+      turboPanel(),stepsPanel(),boostPanel(true),...(showCpuTuning(s)?[advancedCpuTuning()]:[]),firmwarePowerLimitsPanel(),chart());
   } else if(state.view==='gpu') { parts.push(...gpuPanels(),chart()); }
   else if(state.view==='advanced') parts.push(fanSpeedsPanel());
   else if(state.view==='fan') { parts.push(metrics(),fanPanel(),fanProfilesPanel()); }

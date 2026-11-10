@@ -11,6 +11,7 @@ test('Ryzen power rows show provider ceilings separately from firmware readings 
   const snapshot=await new DemoProvider().snapshot();
   snapshot.ryzen.ranges.fastWatts.max=37.5;snapshot.ryzen.ranges.slowWatts.max=28.2;
   snapshot.ryzen.fields.sustainedWatts={available:false,restoreAvailable:false,reason:'Read-only firmware field'};
+  snapshot.firmwarePowerLimits={available:true,limits:[{field:'cpuBurstWatts',maximumWatts:120}]};
   const state={snapshot,drafts:new Map(),busy:false,stale:false};
   const context=vm.createContext({state,Map,Number,Math,fmt:String,
     el:(tag,cls,text)=>({...node(tag,text),className:cls}),panel:()=>node('panel'),
@@ -27,6 +28,22 @@ test('Ryzen power rows show provider ceilings separately from firmware readings 
   assert.ok(walk(rows[0]).filter(n=>n.tag==='button'||n.tag==='input').every(n=>n.disabled),'Read-only stays disabled despite displaying an app ceiling');
   assert.doesNotMatch(textOf(rows[3]),/App maximum/,'Temperature is not a wattage maximum');
   assert.match(textOf(root),/not a hardware-rated maximum/);
+  assert.equal(walk(rows[1]).find(n=>n.tag==='input').max,37.5,'Reported metadata must not raise the writable app ceiling');
+});
+
+for(const vendor of ['ryzen','intel'])test(`${vendor} firmware maximums show named profiles without write controls or guessed missing limits`,async()=>{
+  const snapshot=await new DemoProvider(vendor).snapshot();
+  snapshot.firmwarePowerLimits={available:true,status:'reported',limits:[{field:'cpuBurstWatts',profile:'Custom',profileId:255,minimumWatts:15,defaultWatts:65,maximumWatts:120,stepWatts:1},{field:'apuSustainedWatts',profile:'Platform-defined',profileId:0,minimumWatts:10,defaultWatts:35,maximumWatts:54,stepWatts:1}]};
+  const context=vm.createContext({state:{snapshot},Number,fmt:String,el:(tag,cls,text)=>node(tag,text),panel:title=>node('panel',title),append:(p,...children)=>{p.append(...children);return p;}});
+  vm.runInContext(component('firmwarePowerLimitsPanel','stepsPanel'),context);
+  const walk=n=>[n,...n.children.flatMap(walk)],textOf=n=>[n.text??'',...n.children.map(textOf)].join(' ');
+  let root=vm.runInContext('firmwarePowerLimitsPanel()',context),text=textOf(root);
+  assert.match(text,/CPU burst · FPPT · Custom.*120 W maximum/);assert.match(text,/APU sustained · SPL/);
+  assert.match(text,/active profile is not inferred/);assert.match(text,/does not change tuning ranges/);
+  assert.equal(walk(root).filter(n=>['input','button','select'].includes(n.tag)).length,0);
+  snapshot.firmwarePowerLimits={...snapshot.firmwarePowerLimits,available:false,status:'stale',reason:'Not reported; previous readings expired.'};
+  text=textOf(vm.runInContext('firmwarePowerLimitsPanel()',context));
+  assert.match(text,/Not reported/);assert.doesNotMatch(text,/120 W|54 W/,'Stale metadata cannot remain on screen');
 });
 
 test('startup retries initialize desktop controls after an initial outage and never attach twice after token renewal',async()=>{

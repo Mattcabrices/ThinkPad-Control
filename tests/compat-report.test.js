@@ -8,6 +8,15 @@ import { Store } from '../src/store.js';
 const base={mode:'live',machine:{manufacturer:'LENOVO',model:'21XX',productName:'ThinkPad Test',biosVersion:'R1'},cpu:{name:'AMD Ryzen'},driver:{deviceAccessible:true},fans:[],sensors:[{type:'Temperature',name:'secret-sensor'},{type:'Temperature'},{type:'Fan'}]};
 const report=ryzen=>buildCompatibilityReport({...base,ryzen});
 
+test('firmware maximum export is read-only, allowlisted, and drops stale values',()=>{
+  const data={available:true,status:'reported',source:'Lenovo firmware',serial:'private-serial',limits:[{field:'cpuBurstWatts',profile:'Custom',profileId:255,minimumWatts:15,defaultWatts:45,maximumWatts:80,stepWatts:1,privateAddress:'secret'},{field:'secret-field',maximumWatts:400}]};
+  let result=buildCompatibilityReport({...base,firmwarePowerLimits:data}).firmwarePowerLimits;
+  assert.equal(result.readOnly,true);assert.equal(result.limits.length,1);assert.equal(result.limits[0].maximumWatts,80);
+  assert.doesNotMatch(JSON.stringify(result),/private-serial|privateAddress|secret/);
+  data.available=false;result=buildCompatibilityReport({...base,firmwarePowerLimits:data}).firmwarePowerLimits;
+  assert.deepEqual(result.limits,[]);
+});
+
 test('supported host reports family, table and field availability',()=>{
   const r=report({available:true,current:{fastWatts:25},baseline:{fastWatts:25},model:'20XGS09A00 · Cezanne / Barcelo · table 0x00400005',fields:{sustainedWatts:{available:false,reason:'Read-only'},fastWatts:{available:true,reason:''}}}).ryzen;
   assert.equal(r.status,'supported');assert.equal(r.family,'Cezanne / Barcelo');assert.equal(r.tableVersion,'0x00400005');

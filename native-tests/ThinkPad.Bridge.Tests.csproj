@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../native/RyzenProfile.cs" Link="RyzenProfile.cs" />
+    <Compile Include="../native/FirmwarePowerRanges.cs" Link="FirmwarePowerRanges.cs" />
     <Compile Include="../native/CpuPStateDecoder.cs" Link="CpuPStateDecoder.cs" />
     <Compile Include="../native/IntelPowerLimits.cs" Link="IntelPowerLimits.cs" />
     <Compile Include="../native/PowerPolicy.cs" Link="PowerPolicy.cs" />

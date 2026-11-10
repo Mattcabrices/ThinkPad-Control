@@ -59,6 +59,19 @@ Check(disabledLimits.Available&&!disabledLimits.Pl1!.Enabled&&disabledLimits.Pl1
 Check(!IntelPowerLimits.Decode(ulong.MaxValue,intelLimitBits).Available&&!IntelPowerLimits.Decode(0,0).Available,"Invalid register data is unavailable.");
 Check(!IntelPowerLimits.Decode(0,1UL<<15).Available,"Enabled zero-watt limit is invalid.");
 Check(!IntelPowerLimits.Decode(0,32767UL|(1UL<<15)).Available,"Implausible laptop power limits are unavailable.");
+// Read-only OEM ranges are distinct from SMU targets and app write ceilings.
+var fwBurst=new FirmwarePowerRow(0x0103FF00,7,65,1,15,120);
+var fwReport=FirmwarePowerRanges.Decode([fwBurst,new(0x01010000,1,30,1,5,45),new(0x0105FF00,1,45,1,10,80)]);
+Check(fwReport.Available&&fwReport.ReadOnly&&fwReport.Limits.Length==3,"Reported firmware ranges are read-only metadata, including values above app ceilings.");
+Check(fwReport.Limits.Any(v=>v.Field=="cpuBurstWatts"&&v.MaximumWatts==120&&v.ProfileId==255&&v.Profile=="Custom"),"Burst maxima retain their explicit firmware profile.");
+Check(fwReport.Limits.Any(v=>v.Field=="apuSustainedWatts")&&!fwReport.Limits.Any(v=>v.Field=="cpuSustainedWatts"),"APU and CPU sustained limits must not be conflated with each other or an SMU STAPM field.");
+Check(!FirmwarePowerRanges.Decode([]).Available,"Empty firmware tables remain Not reported.");
+foreach(var invalid in new[]{fwBurst with{Capability=0},fwBurst with{Capability=9},fwBurst with{MaxValue=0},fwBurst with{MaxValue=uint.MaxValue},fwBurst with{MinValue=130},fwBurst with{DefaultValue=140},fwBurst with{Step=0},fwBurst with{Id=0x0203FF00},fwBurst with{Id=0x0103FF01},fwBurst with{Id=0x0104FF00}})
+    Check(!FirmwarePowerRanges.Decode([invalid]).Available,"Unsupported, cross-load, non-power or malformed metadata must never become a wattage maximum.");
+Check(!FirmwarePowerRanges.Decode([fwBurst,fwBurst with{MaxValue=125}]).Available,"Conflicting duplicate capability IDs must not select the highest maximum.");
+Check(!FirmwarePowerRanges.Decode(Enumerable.Repeat(fwBurst,257)).Available,"Oversized capability tables refuse.");
+Check(!FirmwarePowerRanges.Fresh(fwReport,60000).Available&&FirmwarePowerRanges.Fresh(fwReport,60000).Limits.Length==0,"Expired OEM ranges are cleared, not displayed as current firmware data.");
+Check(FirmwarePowerRanges.Fresh(fwReport,59999).Available,"Fresh metadata remains available before the exact expiry boundary.");
 var intelReads=new List<uint>();
 var readLimits=IntelPowerLimits.Read(new("GenuineIntel",6,0xBA,true),register=>{intelReads.Add(register);return register==0x606?3UL|(10UL<<16):intelLimitBits;});
 Check(readLimits.Available&&readLimits.ReadAt is not null&&intelReads.SequenceEqual(new uint[]{0x606,0x610}),"Discovery performs only fixed, read-only register requests.");
@@ -214,7 +227,7 @@ Check(primaryOnly.GetProperty("rpm").GetInt32()==3000&&primaryOnly.GetProperty("
 Check(TpfcEngineTrust.ImageMatches("\"C:\\Program Files\\ThinkPad Control\\engine\\TPFanControl.exe\" -s",@"C:\Program Files\ThinkPad Control\engine\TPFanControl.exe"),"Owned quoted service image must match.");
 Check(!TpfcEngineTrust.ImageMatches("\"C:\\Program Files\\TPFanCtrl2\\TPFanControl.exe\" -s",@"C:\Program Files\ThinkPad Control\engine\TPFanControl.exe"),"External service is not the bundled engine.");
 Check(!TpfcEngineTrust.ImageMatches("C:\\Program Files\\ThinkPad Control\\engine\\TPFanControl.exe -s extra",@"C:\Program Files\ThinkPad Control\engine\TPFanControl.exe"),"Ambiguous or extra service arguments are refused.");
-Check(TpfcEngineTrust.ReviewedEngineSha256 == (args.Length == 1 ? args[0] : "A84A3E1076A2EA7BCB2B3FF68C0BE080447E1982FEE3D14F66A2BF2D1542B302"),"Engine trust hash must match this release build.");
+Check(TpfcEngineTrust.ReviewedEngineSha256 == (args.Length == 1 ? args[0] : "8930720F8BBD1E4CC72670D24237C50F3FFB7E51E87B4DBFEF9A85FFE88ACCC3"),"Engine trust hash must match this release build.");
 // Only an isolated test pipe: no worker, hardware library, driver or global EC map.
 var testOwner=System.Security.Principal.WindowsIdentity.GetCurrent().User!;
 var testSecurity=new System.IO.Pipes.PipeSecurity();testSecurity.SetAccessRuleProtection(true,false);testSecurity.SetOwner(testOwner);

@@ -6,6 +6,7 @@ if(args.Length==1&&args[0]=="--configure-engine-recovery") {
     return;
 }
 using var privatePipe = await PrivatePipe.Connect(args);
+await using var firmwarePowerRanges = new FirmwarePowerRangesMonitor();
 
 // Private stdio protocol. Never bind a privileged sensor bridge to a network port.
 var computer = new Computer { IsCpuEnabled = true, IsGpuEnabled = true,
@@ -110,6 +111,7 @@ object Snapshot()
         sensorMonitor = new {initialized=monitoring?.Initialized??false,complete=monitoring?.Current.Complete??false,warningCount=monitoring?.Current.Warnings.Count??0},
         driver = DriverDiagnostics.Inspect(),
         ryzen = ryzen?.Snapshot,
+        firmwarePowerLimits = firmwarePowerRanges.Snapshot,
         cpuStates,
         fanCurve = tpfc is null ? null : FanCurveConfig.ReadInstalled(),
         sensors = sensors.Select(s => new {

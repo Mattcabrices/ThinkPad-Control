@@ -82,6 +82,17 @@ export function buildCompatibilityReport(snapshot, { appVersion = null, now = ()
     hardwareAccess: !!snapshot.driver?.deviceAccessible,
     sensorMonitor: snapshot.sensorMonitor?{initialized:!!snapshot.sensorMonitor.initialized,complete:!!snapshot.sensorMonitor.complete,warningCount:snapshot.sensorMonitor.warningCount??0}:null,
     ryzen: ryzenDetails(snapshot.ryzen, snapshot.mode),
+    firmwarePowerLimits: {
+      available:!!snapshot.firmwarePowerLimits?.available,
+      status:scrub(snapshot.firmwarePowerLimits?.status)||'not-reported',
+      reason:scrub(snapshot.firmwarePowerLimits?.reason),readOnly:true,
+      source:scrub(snapshot.firmwarePowerLimits?.source),
+      limits:(snapshot.firmwarePowerLimits?.available?snapshot.firmwarePowerLimits?.limits??[]:[])
+        .filter(row=>['cpuSustainedWatts','apuSustainedWatts','cpuAverageWatts','cpuBurstWatts'].includes(row.field)&&Number.isFinite(row.maximumWatts)&&row.maximumWatts>0&&row.maximumWatts<=500)
+        .slice(0,256).map(row=>({field:row.field,profile:scrub(row.profile),profileId:Number.isInteger(row.profileId)&&row.profileId>=0&&row.profileId<=255?row.profileId:null,
+          minimumWatts:Number.isFinite(row.minimumWatts)?row.minimumWatts:null,defaultWatts:Number.isFinite(row.defaultWatts)?row.defaultWatts:null,
+          maximumWatts:row.maximumWatts,stepWatts:Number.isFinite(row.stepWatts)?row.stepWatts:null}))
+    },
     cpuSteps: cpuStepDetails(snapshot.cpuSteps, snapshot.capabilities?.cpuStep),
     gpus: (snapshot.gpus ?? []).map(gpu => ({ name: scrub(gpu.name), vendor: scrub(gpu.vendor), temperatureAvailable: Number.isFinite(gpu.temperature) })),
     fans: (snapshot.fans ?? []).map(fan => ({ name: scrub(fan.name), rpm: fan.rpm ?? null, secondaryRpm: fan.secondaryRpm ?? null, mode: fan.mode ?? null, controlAvailable: !!fan.capability?.available })),

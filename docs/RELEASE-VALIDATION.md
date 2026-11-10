@@ -1,5 +1,22 @@
 # Release validation
 
+## Alpha.36 firmware power ranges — isolated checks
+
+The optional Lenovo WMI capability collector reads CPU/APU minimum, default,
+maximum and step metadata with the firmware profile retained. It does not query
+or change the active profile, write firmware, modify app bounds or grant power
+control. Invalid class yields Not reported; access denial and stale data remain
+distinct. The collector runs outside fan/sensor locks. Positive range decoding,
+invalid/conflicting data, exact expiry and read-only GUI/export paths are covered
+by isolated fixtures. A stale expected engine hash in the native test fixture
+was updated to match the already-reviewed alpha.35 engine; no engine change was
+made for this feature.
+
+The T14s Gen 2's read-only capability query returned Invalid class. Positive
+reporting still requires a supporting device; alpha.35 hardware observations
+below do not certify this detector. No alpha.36 upgrade or hardware tuning was
+performed as part of implementing detection.
+
 ## Alpha.35 bounded hot run — November 10, 2026
 
 By **Matt Cabrices**.

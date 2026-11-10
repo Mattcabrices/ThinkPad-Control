@@ -6,7 +6,12 @@ Monitor temperatures, per-core clocks, power and fan RPM. Set a fan level or sav
 
 Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
-**Current status: 0.4.0-alpha.35, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
+Alpha.36 adds read-only [firmware-reported power maximums](docs/FIRMWARE-POWER-LIMITS.md)
+where supported, with per-profile ranges and an explicit Not reported fallback.
+This does not remove tuning caps or enable unsupported controls; the installed
+alpha.35 hardware results below are separate from this new detector's testing.
+
+**Current status: 0.4.0-alpha.36, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
 **Latest installed Turbo check:** alpha.35 passed a bounded CPU hot run on the
 T14s Gen 2 with 40 W burst / 30 W average limit read-back, Maximum boost and Max
@@ -52,7 +57,7 @@ Ryzen power limits set available power headroom, not a guaranteed power draw. Fi
 
 The source is available here. A validated public binary release is still pending; build outputs described below are development candidates.
 
-For an installer build, run `ThinkPad-Control-Setup-0.4.0-alpha.35-x64.exe`. Setup installs under Program Files, adds shortcuts and an uninstaller, and requests administrator approval to install hardware support. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if missing. Initial driver/runtime acquisition needs internet access; normal operation needs no account, browser tab or terminal.
+For an installer build, run `ThinkPad-Control-Setup-0.4.0-alpha.36-x64.exe`. Setup installs under Program Files, adds shortcuts and an uninstaller, and requests administrator approval to install hardware support. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if missing. Initial driver/runtime acquisition needs internet access; normal operation needs no account, browser tab or terminal.
 
 The package includes a source-built **TPFanCtrl2 2.5.1**, our documented fan-selector patch, its signed EC module, credits and matching sources. Setup configures the engine and hardware worker automatically. If PawnIO is absent, its official installer is downloaded and its pinned hash and signature checked. An existing external TPFanControl service is reported as a conflict and left untouched.
 

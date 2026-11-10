@@ -10,6 +10,9 @@ test('published native bridge: snapshot, invalid control rejection and private p
   try {
     const state=await bridge.request('snapshot');
     assert.ok(Array.isArray(state.sensors));assert.ok(Array.isArray(state.fans));
+    assert.equal(state.firmwarePowerLimits.readOnly,true);
+    assert.ok(Array.isArray(state.firmwarePowerLimits.limits));
+    assert.ok(['discovering','not-reported','reported','access-denied','unavailable','stale'].includes(state.firmwarePowerLimits.status));
     assert.ok(state.sensors.filter(s=>s.type==='Temperature').every(s=>s.value===null||s.value>0));
     await assert.rejects(bridge.request('fan',{fanId:'__nonexistent_test_control__',mode:'manual',percent:75}),/not detected or allowlisted/);
     await assert.rejects(bridge.request('shell',{command:'whoami'}),/Unknown bridge operation/);

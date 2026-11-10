@@ -2,7 +2,7 @@
 
 By **Matt Cabrices**.
 
-The current source is **0.4.0-alpha.35**, an unsigned development preview.
+The current source is **0.4.0-alpha.36**, an unsigned development preview.
 The latest installed check is alpha.35: a bounded CPU hot run held Max cooling
 through 87.125°C, and Restore succeeded in one attempt. The unchanged 90°C manual
 cutoff was not crossed. Automated tests and

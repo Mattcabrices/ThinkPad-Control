@@ -253,6 +253,7 @@ export class WindowsProvider {
         ? this.slotWatch.observe(sensors, metric('CPU','Temperature'), n.fanCurve.masks, n.fanCurve) : this.slotWatch.invalidate(),
         this.fanProfiles.view({ ryzen: n?.ryzen, cpuSteps: steps }, n?.fanCurve ?? null, this.slotWatch.flat(), this.slotWatch.moving())),
       driver: n?.driver || null, sensorMonitor:n?.sensorMonitor??null, ryzen:n?.ryzen || {available:false,reason:'Enable hardware access to discover direct Ryzen tuning.'},
+      firmwarePowerLimits:n?.firmwarePowerLimits??{available:false,status:'unavailable',reason:'Connect hardware access to check firmware power ranges.',limits:[],readOnly:true},
       fanEngine:p.fanEngine || null,
       machine: { manufacturer: p.machine?.Manufacturer || 'Unknown', model: p.machine?.Model || 'ThinkPad · inventory unavailable', productName: p.product?.Version || null, biosVersion: p.bios?.SMBIOSBIOSVersion || null },
       powerSource: p.powerSource || 'Unknown',
