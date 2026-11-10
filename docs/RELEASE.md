@@ -11,8 +11,7 @@ crossed. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
-Use [release validation](RELEASE-VALIDATION.md) for evidence and the
-[announcement draft](ANNOUNCEMENT.md) for the reviewable Reddit post. No public
+Use [release validation](RELEASE-VALIDATION.md) for evidence. No public
 binary release is published at the time of this November 10, 2026 audit.
 
 ## What the candidate includes
@@ -125,8 +124,8 @@ An unsigned experimental prerelease must retain that status and its validation
 limits; it must not be presented as a stable production release.
 
 Review the final source/portable/installer/checksum set and tested-device list
-before creating a GitHub release. Review the single [Reddit draft](ANNOUNCEMENT.md)
-before posting. CI artifacts, old drafts and simulated screenshots are not a
+before creating a GitHub release. Review any public announcement before posting.
+CI artifacts, old drafts and simulated screenshots are not a
 substitute for that decision. Publication is not automatic.
 
 ## Owned fan-service recovery
