@@ -4,6 +4,8 @@ A Windows desktop app for ThinkPad owners who want to see what their hardware is
 
 Monitor temperatures, per-core clocks, power and fan RPM. Set a fan level or save a temperature curve. Manage processor boost and speed limits separately for AC and battery. On supported Ryzen systems, adjust the power limits exposed by the firmware.
 
+**More performance when you need it.** On the tested T14s Gen 2 Ryzen 5, ThinkPad Control successfully applied higher CPU power limits, allowing the processor more power headroom for demanding tasks. A short Turbo workload measured approximately 23–33 W of CPU package power with Max cooling active, then restored the previous settings successfully. Available controls and results depend on the processor and firmware; longer boost duration and performance gains still need comparative benchmarking. See the [validation results](docs/RELEASE-VALIDATION.md).
+
 Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
 Alpha.36 adds read-only [firmware-reported power maximums](docs/FIRMWARE-POWER-LIMITS.md)
