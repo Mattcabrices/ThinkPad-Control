@@ -1,5 +1,22 @@
 # Release validation
 
+## Alpha.34 installed upgrade — November 10, 2026
+
+The owner approved the unsigned alpha.34 installer. Setup, hardware support and
+fan-configuration finalization returned success, with no reboot. All 113
+immutable installed files matched the prepared manifest; the fan INI was checked
+separately and remained byte-identical. Hardware access and fresh telemetry
+connected after reopening.
+
+The full CPU policy and boost settings, Ryzen limits, saved profiles and manual
+temperature cutoff matched the immediate pre-upgrade capture. Startup resumed
+the stored curve; the starting firmware fan mode was restored and verified.
+Turbo remained off, with no pending recovery. No Turbo activation or stress test
+was run; higher-wattage acceptance remains unverified.
+
+Private evidence: `alpha34-installed-validation.json`, `alpha34-final-state.json`,
+`alpha34-before-upgrade.json`, `alpha34-before-upgrade.ini`, `alpha34-install.log`.
+
 ## Alpha.34 Turbo fix — isolated checks
 
 The cached dashboard snapshot previously remained unchanged throughout Turbo's
@@ -11,8 +28,8 @@ rollback are covered; loss during a reading refuses the next write. Independent
 native watchdogs and temperature cutoffs are unchanged.
 
 This is a software regression fix, not a successful installed Turbo test. The
-alpha.33 physical result below remains the latest installed evidence until the
-new build is installed and checked. Higher firmware wattage acceptance remains
+alpha.33 physical result below remains the latest installed Turbo evidence until
+the new build's Turbo activation is checked. Higher firmware wattage acceptance remains
 unknown.
 
 ## Current evidence — alpha.33, November 9, 2026

@@ -12,6 +12,8 @@ I wanted one desktop app for checking what my ThinkPad is doing and managing its
 
 Source: https://github.com/Mattcabrices/ThinkPad-Control
 
+By **Matt Cabrices**.
+
 It brings together:
 
 - CPU/GPU temperatures, clocks and power where the hardware exposes them, plus per-core clock details, measured fan RPM and a sensor list with Min/Max.
