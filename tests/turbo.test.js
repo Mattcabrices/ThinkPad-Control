@@ -73,6 +73,27 @@ test('partial restoration retains recovery and permits a verified retry instead 
   p.restoreTurboPolicy=restore;await turbo.command('restore');assert.deepEqual(captured(await p.snapshot()),before);assert.equal(turbo.saved,null);
 });
 
+for(const coupled of [true,false])test(`restore verifies a read-only sustained limit ${coupled?'coupled to':'independent of'} a writable burst limit`,async()=>{
+  const {p,turbo,commands}=fixture(),read=p.snapshot.bind(p),write=p.command.bind(p);
+  p.ryzenLimits.sustainedWatts=p.ryzenBaseline.sustainedWatts=25;
+  p.snapshot=async()=>{const s=await read();s.ryzen.fields.sustainedWatts={available:false,restoreAvailable:false};return s;};
+  p.command=async c=>{
+    if(c.type==='ryzen-tune'&&c.setting==='sustainedWatts')throw Error('Sustained power is read-only on this hardware.');
+    const result=await write(c);
+    if(c.type==='ryzen-tune'&&c.setting==='fastWatts'&&(coupled||c.value===40))p.ryzenLimits.sustainedWatts=p.ryzenLimits.fastWatts;
+    return result;
+  };
+  const before=captured(await p.snapshot());await turbo.command('enable');
+  assert.equal(p.ryzenLimits.sustainedWatts,40);
+  if(coupled){
+    await turbo.command('restore');assert.deepEqual(captured(await p.snapshot()),before);assert.equal(turbo.saved,null);
+    assert.ok(!commands.some(c=>c.setting==='sustainedWatts'),'Coupled read-only values must recover through the writable control');
+  }else{
+    await assert.rejects(turbo.command('restore'),/incomplete/);assert.ok(turbo.saved);
+    assert.equal((await p.snapshot()).fans[0].mode,'auto','Unrestored read-only limits must retain recovery and release cooling');
+  }
+});
+
 test('power-source changes, firmware overrides, and released fans stop the verified-active claim without automatic reapplication',async()=>{
   const {p,turbo,commands}=fixture();await turbo.command('enable');const count=commands.length,s=await p.snapshot();
   s.powerSource='Offline';assert.equal(turbo.view(s).active,false);s.powerSource='Online';s.ryzen.current.fastWatts=20;assert.equal(turbo.view(s).active,false);

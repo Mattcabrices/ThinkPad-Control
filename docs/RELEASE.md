@@ -3,8 +3,9 @@
 By **Matt Cabrices**.
 
 The current source is **0.4.0-alpha.34**, an unsigned development preview.
-The latest installed upgrade/settings check is alpha.34. Successful installed
-Turbo activation remains unverified. Automated tests and
+The latest installed check is alpha.34: Turbo activation passed, and restoration
+passed after one retry. The follow-up source fix for restoration order still
+needs an installed-build check. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
@@ -100,7 +101,7 @@ publisher trust. Bit-for-bit reproducible builds are not yet established.
 | GUI clarity and layout | Actual Ryzen/Intel demo captures, minimum-window and high-DPI checks | Owner review; no hardware compatibility inference |
 | Missing-driver download/trust gates | Mocked setup branch plus actual data-only SHA/signature checks | Real fresh-driver install and cleanup on a clean device |
 | Installed telemetry and fan handover | Alpha.33 upgrade/telemetry preservation and alpha.30 T14s fan handover; earlier T14 Gen 3 observations | Current build on both Ryzen targets and real Intel hardware |
-| Turbo | First alpha.33 activation aborted; automatic rollback independently verified; isolated activation/recovery tests | Resolve connection lease failure and pass owner-approved installed activation/restoration |
+| Turbo | Alpha.34 T14s activation passed; Restore needed one retry, then independent verification passed | Install/retest the follow-up restoration-order fix and broaden hardware coverage |
 | Battery and physical recovery | Partial historical/isolated coverage | AC/battery, longer sessions, sensor/worker/service loss, crash exhaustion, sleep/resume/reboot matrix |
 | Upgrade/uninstall and account scope | Prior approved upgrades and ownership tests | Clean-device, independent uninstall, standard-user/alternate-account validation |
 | Trusted distribution | Signing tooling prepared | Publisher identity, real signing/timestamps and clean-policy acceptance |

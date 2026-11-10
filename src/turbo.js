@@ -131,7 +131,11 @@ export class TurboController {
     const groups=['frequency','boost'].filter(k=>j.attempted.includes(k));
     if(groups.length)await tryRestore(()=>this.provider.restoreTurboPolicy(j.before.policy,groups,j.before.boostRecovery));
     if(j.before.ryzen&&j.attempted.some(k=>powerFields.includes(k))){
-      for(const key of [...powerFields,'temperatureLimit'])await tryRestore(async()=>{
+      // Some firmware reports a read-only sustained limit coupled to PPT fast.
+      // Restore the controls we actually attempted first, then check collateral
+      // readings. A genuinely unrestored read-only value still retains recovery.
+      const restoreFields=[...new Set([...j.attempted.filter(k=>powerFields.includes(k)),...powerFields,'temperatureLimit'])];
+      for(const key of restoreFields)await tryRestore(async()=>{
         const now=await this.provider.snapshot(),value=j.before.ryzen[key];if(equal(now.ryzen?.current?.[key],value))return;
         const field=now.ryzen?.fields?.[key],baseline=now.ryzen?.baseline?.[key];
         await this.provider.command(field?.available===false&&field.restoreAvailable!==false&&equal(baseline,value)?

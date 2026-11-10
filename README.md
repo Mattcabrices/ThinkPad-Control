@@ -8,15 +8,17 @@ Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
 **Current status: 0.4.0-alpha.34, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
-**Latest installed Turbo check:** an alpha.33 attempt on the T14s Gen 2 aborted
-with an app-connection lease error. Automatic rollback and an independent settings
-comparison passed. Successful Turbo activation and higher-wattage acceptance remain
-unverified. See the [current results and evidence](docs/RELEASE-VALIDATION.md).
+**Latest installed Turbo check:** alpha.34 activated on the T14s Gen 2 with
+40 W burst / 30 W average limit read-back, Maximum boost and Max fan. Restore
+required one retry; all original settings were independently verified afterward.
+These are accepted limits, not proof of sustained power delivery. See the
+[current results and evidence](docs/RELEASE-VALIDATION.md).
 
 Alpha.34 addresses a reproduced stale-telemetry failure during Turbo activation.
 Fresh worker readings now reach the UI while activation runs; connection expiry
 and thermal protection remain enforced. The alpha.34 upgrade and settings
-preservation passed; installed Turbo retesting is still required.
+preservation passed. A follow-up restoration-order fix is in source and still
+needs a new installed-build check; it is not in the existing alpha.34 installer.
 
 ## What you can do
 

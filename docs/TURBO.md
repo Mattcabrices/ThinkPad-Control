@@ -3,7 +3,8 @@
 Turbo coordinates existing controls in one action with a saved restoration record.
 Alpha.30 introduced it experimentally. The first installed alpha.33 attempt
 aborted with an app-connection lease error; automatic rollback and independent
-restoration checks passed. Successful installed activation remains unverified.
+restoration checks passed. Alpha.34 subsequently activated on the T14s Gen 2;
+restoration required one retry and then passed independent verification.
 See [current validation results](RELEASE-VALIDATION.md) for the exact scope.
 
 Alpha.34 publishes actual intermediate worker readings during activation so a
@@ -11,8 +12,16 @@ long transaction does not hide fresh telemetry from the desktop's connection
 check. This does not manufacture fresh timestamps or renew the UI lease: a
 disconnected UI still times out, and a lease lost during a reading aborts before
 the next write. Isolated regressions cover connected and disconnected clients;
-successful installed activation and higher-wattage acceptance still need a
-physical check of this build.
+an installed check verified 40 W burst / 30 W average limit read-back and Max fan.
+Measured CPU power was about 25–27 W during the short check, not 40 W sustained.
+
+That check exposed coupled firmware readings: changing the writable burst limit
+also changed the read-only sustained-limit reading. The first Restore tried the
+read-only value too early and retained recovery even though the writable restore
+returned all limits to baseline. A Restore retry verified and cleared recovery.
+Source now restores attempted writable fields first, then verifies the other
+readings; a genuinely unrecovered read-only value still retains recovery. This
+follow-up fix is not in the installed alpha.34 binary and needs installed testing.
 
 ## Activation
 

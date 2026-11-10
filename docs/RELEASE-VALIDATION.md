@@ -1,5 +1,33 @@
 # Release validation
 
+## Alpha.34 physical Turbo check — November 10, 2026
+
+One owner-approved activation on the T14s Gen 2 Ryzen 5 PRO 5650U passed.
+Read-back showed PPT fast 40 W, PPT slow approximately 30 W, Maximum boost,
+current-source frequency cap removed and Max fan level 64 at about 4,900 RPM.
+Three short samples remained verified active. CPU package power measured about
+24.8–27 W and temperature reached 86.25°C; accepted limits are not proof of 40 W
+sustained delivery. No stress workload, sleep or reboot was added.
+
+The read-only sustained-limit reading followed the writable fast limit to 40 W.
+The first Restore reported a read-only sustained-power error, although restoring
+the writable limits returned every actual limit to baseline. Recovery correctly
+remained pending. One Restore-only retry passed; independent comparisons then
+verified the full CPU policy/boost, all Ryzen limits, profiles, cutoff, exact fan
+INI, curve/masks and starting firmware fan mode. Turbo was off with no pending
+recovery. The initial test's boost-recovery metadata comparison also passed.
+
+Source now restores attempted writable power fields before checking collateral
+readings. The coupled-field regression fails on the previous code and passes on
+the fix; an independent read-only mismatch still retains recovery. All 238
+application tests pass. This follow-up change is not installed or included in
+the existing alpha.34 installer; a new build and installed check remain necessary
+before claiming a one-pass Turbo/Restore result.
+
+Private evidence: `turbo-physical-20261110-005557/{result,enabled,activity}.json`,
+three sample snapshots, `restore-retry-response.json`, `final-after-retry.json`
+and `recovery-retry-verification.json`. Earlier entries below are historical.
+
 ## Alpha.34 installed upgrade — November 10, 2026
 
 The owner approved the unsigned alpha.34 installer. Setup, hardware support and
