@@ -6,6 +6,14 @@ aborted with an app-connection lease error; automatic rollback and independent
 restoration checks passed. Successful installed activation remains unverified.
 See [current validation results](RELEASE-VALIDATION.md) for the exact scope.
 
+Alpha.34 publishes actual intermediate worker readings during activation so a
+long transaction does not hide fresh telemetry from the desktop's connection
+check. This does not manufacture fresh timestamps or renew the UI lease: a
+disconnected UI still times out, and a lease lost during a reading aborts before
+the next write. Isolated regressions cover connected and disconnected clients;
+successful installed activation and higher-wattage acceptance still need a
+physical check of this build.
+
 ## Activation
 
 The backend reads current capabilities, power source and actual settings. It
@@ -33,6 +41,12 @@ policies are untouched; Ryzen firmware limits and cooling are device-wide.
 Ceilings come from worker/provider capabilities, never arbitrary UI values.
 Firmware still governs actual clocks and sustained wattage: continuous boost or
 higher measured power is not guaranteed.
+
+Turbo leaves these requests in place for demanding work until restoration or a
+firmware override. It does not repeatedly fight firmware limits. The displayed
+App maximum is the reviewed writable ceiling exposed by the provider, not a
+verified silicon maximum. If sustained power is read-only on a laptop, Turbo
+cannot raise that limit even when its burst and average limits are writable.
 
 ## Restoration and interruptions
 

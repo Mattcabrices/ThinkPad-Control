@@ -1,5 +1,20 @@
 # Release validation
 
+## Alpha.34 Turbo fix — isolated checks
+
+The cached dashboard snapshot previously remained unchanged throughout Turbo's
+serialized activation, even as the controller obtained new worker readings.
+Regression tests reproduce the resulting stale-state lease withdrawal. Alpha.34
+publishes those real intermediate readings, without altering their timestamps or
+extending the UI lease. Connected-client activation and disconnected-client
+rollback are covered; loss during a reading refuses the next write. Independent
+native watchdogs and temperature cutoffs are unchanged.
+
+This is a software regression fix, not a successful installed Turbo test. The
+alpha.33 physical result below remains the latest installed evidence until the
+new build is installed and checked. Higher firmware wattage acceptance remains
+unknown.
+
 ## Current evidence — alpha.33, November 9, 2026
 
 The tested application is `0.4.0-alpha.33+7f36286f25a6a5ffc0c19c2b0abd2ef2436bce00`.

@@ -5,7 +5,7 @@
   #define ReleaseRoot "..\artifacts\releases"
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.4.0-alpha.33"
+  #define AppVersion "0.4.0-alpha.34"
 #endif
 [Setup]
 #ifdef SignedBuild

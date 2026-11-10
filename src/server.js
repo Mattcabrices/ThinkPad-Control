@@ -22,7 +22,8 @@ export function createApp({ provider, store, interval = 3000, monotonicNow = () 
   const token = randomBytes(32).toString('hex');
   let snapshot = null, lastError = null, lastLease = null, timer, stopping = false, expectedHost, queued = 0, closingPromise;
   let tail = Promise.resolve();
-  const turbo=new TurboController(provider,{file:turboStateFile,leaseAlive:()=>lastLease!==null&&monotonicNow()-lastLease<7500});
+  const turbo=new TurboController(provider,{file:turboStateFile,leaseAlive:()=>lastLease!==null&&monotonicNow()-lastLease<7500,
+    onSnapshot:s=>{snapshot=s;lastError=null;}});
   const readSnapshot=async()=>{const s=await provider.snapshot();return {...s,turbo:turbo.view(s)};};
   const serialized = fn => {
     if (queued >= 32) return Promise.reject(new Error('Hardware command queue is full.'));

@@ -186,3 +186,46 @@ test('a long activation renews cooling only while the requesting UI lease is ali
   p.command=async c=>{const result=await command(c);if(c.type==='fan'&&c.mode==='manual')await new Promise(r=>setTimeout(r,2200));return result;};
   await turbo.command('enable');assert.ok(renewals>=1);await turbo.command('restore');
 });
+
+for(const connected of [true,false])test(`Turbo publishes intermediate readings without reviving a ${connected?'connected':'disconnected'} UI lease`,async t=>{
+  const {p}=fixture(),before=captured(await p.snapshot()),read=p.snapshot.bind(p),write=p.command.bind(p);
+  let elapsed=0,first=true;
+  // The cached public sample ages while the next actual worker reading is fresh.
+  // No wall-clock sleeps or real hardware are needed to cross the lease boundary.
+  p.snapshot=async()=>{const s=await read();if(first){first=false;s.at=new Date(Date.now()-16000).toISOString();}return s;};
+  const app=createApp({provider:p,store:new Store(':memory:'),interval:60000,monotonicNow:()=>elapsed});
+  t.after(()=>app.close());const url=await app.listen(0);
+  const post=(path,body)=>fetch(url+path,{method:'POST',headers:{'X-Control-Token':app.sessionToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let observed;
+  p.command=async c=>{
+    const result=await write(c);
+    if(c.type==='fan'&&c.mode==='manual'){
+      observed=await fetch(url+'/api/state',{headers:{'X-Control-Token':app.sessionToken}}).then(r=>r.json());
+      elapsed=7000;
+      // Match native/browser behavior: only a connected UI with fresh state renews.
+      if(connected&&!observed.stale&&!observed.error)await post('/api/lease',{active:true});
+      elapsed=8000;
+    }
+    return result;
+  };
+  const response=await post('/api/commands',{type:'turbo',action:'enable'});
+  assert.equal(observed.stale,false,'Actual intermediate worker readings must reach the UI during activation');
+  assert.equal(observed.snapshot.fans[0].mode,'auto','Progress readings do not prematurely claim the pending write succeeded');
+  if(connected){
+    assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+    assert.equal((await response.json()).snapshot.turbo.active,true);
+    assert.equal((await post('/api/commands',{type:'turbo',action:'restore'})).status,200);
+  }else{
+    assert.equal(response.status,409);assert.match((await response.json()).error,/connection was lost.*restored and verified/);
+  }
+  assert.deepEqual(captured(await read()),before);
+});
+
+test('a UI lost during a worker reading aborts before the next hardware write',async()=>{
+  const {p,commands}=fixture(),before=captured(await p.snapshot()),read=p.snapshot.bind(p);
+  let alive=true,reads=0;
+  p.snapshot=async()=>{const s=await read();if(++reads===2)alive=false;return s;};
+  const turbo=new TurboController(p,{leaseAlive:()=>alive});
+  await assert.rejects(turbo.command('enable'),/connection was lost.*restored and verified/);
+  assert.equal(commands.length,0);assert.deepEqual(captured(await read()),before);
+});

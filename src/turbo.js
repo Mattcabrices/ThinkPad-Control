@@ -63,10 +63,16 @@ export function planTurbo(s) {
 
 // One journal per backend/data directory. Never resumes Turbo automatically.
 export class TurboController {
-  constructor(provider,{file=null,leaseAlive=()=>true}={}) {
-    this.provider=provider;this.file=file;this.leaseAlive=leaseAlive;this.saved=null;this.error=null;this.startedHere=false;
+  constructor(provider,{file=null,leaseAlive=()=>true,onSnapshot=()=>{}}={}) {
+    this.provider=provider;this.file=file;this.leaseAlive=leaseAlive;this.onSnapshot=onSnapshot;this.saved=null;this.error=null;this.startedHere=false;
     try{if(file&&existsSync(file)){if(statSync(file).size>65536)throw Error('Turbo recovery file is too large.');this.saved=JSON.parse(readFileSync(file,'utf8').replace(/^\uFEFF/,''));validateJournal(this.saved);}}
     catch(e){this.saved=null;this.error=`Turbo recovery record could not be read: ${e.message}`;}
+  }
+  async snapshot(){
+    const s=await this.provider.snapshot();
+    // Publish actual worker readings during the serialized transaction. Never
+    // synthesize a timestamp or renew the requesting UI's independent lease.
+    this.onSnapshot({...s,turbo:this.view(s)});return s;
   }
   persist(value){
     validateJournal(value);
@@ -90,11 +96,13 @@ export class TurboController {
   async command(action){
     if(action==='restore')return this.restore();
     if(this.saved||this.error)throw Error(this.error||'Restore previous Turbo settings before enabling it again.');
-    const initial=await this.provider.snapshot(),j=planTurbo(initial);
+    const initial=await this.snapshot(),j=planTurbo(initial);
     j.before.boostRecovery=this.provider.turboBoostRecovery?.(j.before.policy)??null;
     this.persist(j);this.startedHere=false;
-    const attempt=async(key,c)=>{if(!this.leaseAlive())throw Error('The app connection was lost during Turbo activation.');
-      const s=await this.provider.snapshot();if(identity(s)!==j.identity||sourceOf(s)!==j.before.policy.source||s.cpuSteps?.policy?.scheme!==j.before.policy.scheme)throw Error('Power source, device or power plan changed during Turbo activation.');
+    const requireLease=()=>{if(!this.leaseAlive())throw Error('The app connection was lost during Turbo activation.');};
+    const attempt=async(key,c)=>{requireLease();
+      const s=await this.snapshot();requireLease();
+      if(identity(s)!==j.identity||sourceOf(s)!==j.before.policy.source||s.cpuSteps?.policy?.scheme!==j.before.policy.scheme)throw Error('Power source, device or power plan changed during Turbo activation.');
       j.attempted.push(key);this.persist(j);await this.provider.command(c);};
     // Keep the worker's existing watchdog alive only while the requesting UI has
     // a fresh lease. A missing UI still releases the fan independently.
@@ -107,7 +115,7 @@ export class TurboController {
       if(!initial.cpuSteps.maxBoost?.[b.source])await attempt('boost',{type:'cpu-max-boost',source:b.source,enabled:true});
       for(const target of j.targets)await attempt(target.key,{type:'ryzen-tune',setting:target.key,value:target.value,restore:false});
       this.startedHere=true;
-      const after=await this.provider.snapshot();if(!this.view(after).active||!this.leaseAlive())throw Error('Turbo read-back did not match all requested settings.');
+      const after=await this.snapshot();if(!this.view(after).active||!this.leaseAlive())throw Error('Turbo read-back did not match all requested settings.');
       return `Turbo verified for ${b.source==='ac'?'AC power':'battery'}. ${j.notes.join(' ')} Firmware still governs actual clocks and sustained wattage.`;
     }catch(e){
       clearInterval(timer);

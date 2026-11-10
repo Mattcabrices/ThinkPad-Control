@@ -1,6 +1,6 @@
 # Release preparation
 
-The current source is **0.4.0-alpha.33**, an unsigned development preview.
+The current source is **0.4.0-alpha.34**, an unsigned development preview.
 The latest installed hardware check is alpha.33. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
