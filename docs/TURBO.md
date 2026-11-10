@@ -20,8 +20,7 @@ also changed the read-only sustained-limit reading. The first Restore tried the
 read-only value too early and retained recovery even though the writable restore
 returned all limits to baseline. A Restore retry verified and cleared recovery.
 Source now restores attempted writable fields first, then verifies the other
-readings; a genuinely unrecovered read-only value still retains recovery. This
-follow-up fix is not in the installed alpha.34 binary and needs installed testing.
+readings; a genuinely unrecovered read-only value still retains recovery. Alpha.35 includes this fix and passed a bounded installed hot run with a single successful Restore. Earlier alpha.34 installers do not include it.
 
 ## Activation
 
@@ -77,8 +76,7 @@ Minimizing retains manual cooling through the native lease/watchdog. In alpha.35
 TPFanCtrl2 Max cooling stays at Max above the manual cutoff; that cutoff still
 applies to levels 1–7. Closing, connection loss or missing/stale temperature
 readings release manual cooling to firmware. CPU thermal protection is unchanged.
-This requires the matching alpha.35 worker and engine; installed thermal-crossing
-verification remains pending.
+This requires the matching alpha.35 worker and engine. A bounded installed run held Max at 5,100–5,356 RPM through 87.125°C; the configured 90°C manual cutoff was not crossed.
 **Power settings remain until restored.** Startup, power-source changes and
 firmware overrides never automatically enable or reapply Turbo. An interrupted or
 restarted session shows restoration pending, not verified active. Restore before

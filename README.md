@@ -8,17 +8,16 @@ Created by **Matt Cabrices**. Original code is [MIT licensed](LICENSE).
 
 **Current status: 0.4.0-alpha.35, an unsigned development preview.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
-**Latest installed Turbo check:** alpha.34 activated on the T14s Gen 2 with
-40 W burst / 30 W average limit read-back, Maximum boost and Max fan. Restore
-required one retry; all original settings were independently verified afterward.
+**Latest installed Turbo check:** alpha.35 passed a bounded CPU hot run on the
+T14s Gen 2 with 40 W burst / 30 W average limit read-back, Maximum boost and Max
+fan. Restore passed in one attempt; all original settings were independently verified afterward.
 These are accepted limits, not proof of sustained power delivery. See the
 [current results and evidence](docs/RELEASE-VALIDATION.md).
 
 Alpha.34 addresses a reproduced stale-telemetry failure during Turbo activation.
 Fresh worker readings now reach the UI while activation runs; connection expiry
 and thermal protection remain enforced. The alpha.34 upgrade and settings
-preservation passed. A follow-up restoration-order fix is in source and still
-needs a new installed-build check; it is not in the existing alpha.34 installer. Alpha.35 also keeps Max cooling active above the manual fan cutoff, with connection and sensor watchdogs retained.
+preservation passed. Alpha.35 passed a bounded 60-second CPU hot run: Max stayed at 5,100–5,356 RPM up to 87.125°C, and Restore passed in one attempt. The unchanged 90°C manual cutoff was not crossed; broader thermal testing remains open.
 
 ## What you can do
 

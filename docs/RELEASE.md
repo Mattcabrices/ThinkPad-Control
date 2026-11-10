@@ -3,9 +3,9 @@
 By **Matt Cabrices**.
 
 The current source is **0.4.0-alpha.35**, an unsigned development preview.
-The latest installed check is alpha.34: Turbo activation passed, and restoration
-passed after one retry. The follow-up source fix for restoration order still
-needs an installed-build check. Automated tests and
+The latest installed check is alpha.35: a bounded CPU hot run held Max cooling
+through 87.125°C, and Restore succeeded in one attempt. The unchanged 90°C manual
+cutoff was not crossed. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
@@ -101,7 +101,7 @@ publisher trust. Bit-for-bit reproducible builds are not yet established.
 | GUI clarity and layout | Actual Ryzen/Intel demo captures, minimum-window and high-DPI checks | Owner review; no hardware compatibility inference |
 | Missing-driver download/trust gates | Mocked setup branch plus actual data-only SHA/signature checks | Real fresh-driver install and cleanup on a clean device |
 | Installed telemetry and fan handover | Alpha.33 upgrade/telemetry preservation and alpha.30 T14s fan handover; earlier T14 Gen 3 observations | Current build on both Ryzen targets and real Intel hardware |
-| Turbo | Alpha.34 T14s activation passed; Restore needed one retry, then independent verification passed | Install/retest the follow-up restoration-order fix and broaden hardware coverage |
+| Turbo | Alpha.34 T14s activation passed; Restore needed one retry, then independent verification passed | Bounded alpha.35 hot run and one-pass Restore passed; broaden model, duration and cutoff-crossing coverage |
 | Battery and physical recovery | Partial historical/isolated coverage | AC/battery, longer sessions, sensor/worker/service loss, crash exhaustion, sleep/resume/reboot matrix |
 | Upgrade/uninstall and account scope | Prior approved upgrades and ownership tests | Clean-device, independent uninstall, standard-user/alternate-account validation |
 | Trusted distribution | Signing tooling prepared | Publisher identity, real signing/timestamps and clean-policy acceptance |

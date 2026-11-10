@@ -14,8 +14,8 @@
 
 Target models are not claims of certified compatibility. The following observations supersede the earlier unelevated discovery checks. Missing or unidentified sensors remain unavailable.
 
-For the alpha.34 T14s Gen 2 Turbo activation and verified restoration after one
-retry, see [current validation results](RELEASE-VALIDATION.md). This short check
+For the alpha.35 T14s Gen 2 bounded Turbo hot run and one-pass verified
+restoration, see [current validation results](RELEASE-VALIDATION.md). This short check
 does not establish sustained performance or Turbo support on other models.
 
 | Machine and tested build | Observed on hardware | Still open |

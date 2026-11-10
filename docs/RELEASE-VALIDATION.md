@@ -1,5 +1,31 @@
 # Release validation
 
+## Alpha.35 bounded hot run — November 10, 2026
+
+By **Matt Cabrices**.
+
+On the T14s Gen 2 Ryzen 5 PRO 5650U, one Turbo activation succeeded, followed by
+a six-worker CPU workload bounded to 60 seconds. Max stayed at level 64 across
+all 19 observations (12 distinct telemetry samples). CPU temperature peaked at
+87.125°C, above the configured 86°C CPU target; fan readings stayed between
+5,100 and 5,356 RPM. All observations remained verified active. Package power
+read 22.9–32.7 W; requested limits are not guaranteed delivered power.
+
+The workload stopped, and a single Restore succeeded without the previous
+read-only-field error. Independent checks verified the complete original CPU
+policy/boost, all Ryzen limits, saved profiles, manual cutoff, exact fan INI,
+curve/masks, boost-recovery metadata and starting firmware fan mode. Turbo was
+off, no recovery remained pending, and no workload process remained running.
+
+The CPU target stayed 86°C and manual fan cutoff stayed 90°C throughout. This
+verifies Max cooling above the CPU target, not physical crossing of the 90°C
+manual cutoff. Native isolated tests cover that exception. No thermal limits
+were raised; this short run does not establish long-term or other-model support.
+
+Private evidence: `turbo-hot-20261110-012504/{result,summary,activity}.json`,
+`enabled.json`, sample snapshots, `restore-response.json`, `final.json` and
+`before.ini`. Earlier pending-check statements below are historical.
+
 ## Alpha.35 installed upgrade — November 10, 2026
 
 The owner approved the unsigned alpha.35 installer. Setup, hardware support and
