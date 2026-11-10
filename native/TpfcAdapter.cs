@@ -18,6 +18,7 @@ internal sealed class TpfcAdapter : IDisposable
     private TimeSpan leaseUntil = TimeSpan.Zero;
     private int? pendingSequence;
     private bool restoring;
+    private int? requestedManualLevel;
     private TimeSpan lastRestoreRequest = TimeSpan.Zero;
     public bool OwnsManual { get; private set; }
     public int ManualTemperatureLimit { get; private set; } = 85;
@@ -51,8 +52,9 @@ internal sealed class TpfcAdapter : IDisposable
     }
     private static int? Rpm(int lo,int hi) => lo is >=0 and <=255 && hi is >=0 and <=255 && (hi*256+lo)<20000 ? hi*256+lo : null;
     // A T14 Gen 3 has a slot fixed at 1, which must not count as the valid reading this requires.
-    public static bool ThermalSafe(State state, int limit = 85) => limit is >=60 and <=110 && state.Fresh && state.Temperatures.Any(t=>t>=10&&t<limit) &&
-        state.Temperatures.Where(t=>t>0&&t<128).All(t=>t<limit);
+    public static bool ThermalSafe(State state, int limit = 85, bool maxCooling = false) => limit is >=60 and <=110 && state.Fresh &&
+        state.Temperatures.Any(t=>t>=10&&t<(maxCooling?128:limit)) &&
+        state.Temperatures.Where(t=>t>0&&t<128).All(t=>maxCooling||t<limit);
     public void SetManualTemperatureLimit(int limit) {
         if(limit is <60 or >110)throw new InvalidOperationException("Manual fan temperature limit must be 60–110°C.");
         if(OwnsManual)throw new InvalidOperationException("Return the fan to firmware before changing its temperature limit.");
@@ -71,9 +73,10 @@ internal sealed class TpfcAdapter : IDisposable
         {
             if (restoring) throw new InvalidOperationException("Wait for verified firmware restoration before requesting manual control.");
             if (level is not (>=1 and <=7 or FullSpeedLevel)) throw new InvalidOperationException("ThinkPad fan level must be 1–7, or full speed.");
-            if (!ThermalSafe(state,ManualTemperatureLimit)) throw new InvalidOperationException($"Valid, fresh EC temperatures below {ManualTemperatureLimit}°C are required.");
+            if (!ThermalSafe(state,ManualTemperatureLimit,level==FullSpeedLevel)) throw new InvalidOperationException(level==FullSpeedLevel?
+                "Valid, fresh EC temperatures are required for Max cooling.":$"Valid, fresh EC temperatures below {ManualTemperatureLimit}°C are required.");
             if (state.Command!=state.Acknowledged) throw new InvalidOperationException("Another TPFanCtrl2 command is pending.");
-            OwnsManual=true; restoring=false; leaseUntil=now().Add(TimeSpan.FromSeconds(10));
+            OwnsManual=true; requestedManualLevel=level; restoring=false; leaseUntil=now().Add(TimeSpan.FromSeconds(10));
         }
         else if (mode!="auto") throw new InvalidOperationException("Unknown TPFanCtrl2 mode.");
         if (mode=="auto") { restoring=OwnsManual; lastRestoreRequest=now(); }
@@ -90,11 +93,13 @@ internal sealed class TpfcAdapter : IDisposable
         var state=Read();
         // A repeated firmware request arrives with nothing owned, and must still clear its own status.
         if(state.Fresh && (restoring || !OwnsManual) && pendingSequence.HasValue && state.Acknowledged==pendingSequence && state.Mode==1 && state.RawLevel==128)
-        { OwnsManual=false; restoring=false; pendingSequence=null; Status="Firmware control verified by EC read-back."; }
+        { OwnsManual=false; requestedManualLevel=null; restoring=false; pendingSequence=null; Status="Firmware control verified by EC read-back."; }
         else if(state.Fresh && OwnsManual && !restoring && pendingSequence.HasValue && state.Acknowledged==pendingSequence && state.Mode==3 && state.RawLevel is >=1 and <=7 or FullSpeedLevel)
         { pendingSequence=null; Status="Manual fan level verified by EC read-back."; }
         if (!OwnsManual) return;
-        if(restoring || now()>=leaseUntil || !ThermalSafe(state,ManualTemperatureLimit))
+        // Heat alone must not reduce an explicitly requested Max fan. The same
+        // telemetry and UI lease checks still release an unattended/unknown fan.
+        if(restoring || now()>=leaseUntil || !ThermalSafe(state,ManualTemperatureLimit,requestedManualLevel==FullSpeedLevel))
         {
             // A lost acknowledgement must never leave a pending manual request in place.
             // Allow one normal five-second engine cycle before retrying a BIOS request.

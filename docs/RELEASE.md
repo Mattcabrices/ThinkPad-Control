@@ -2,7 +2,7 @@
 
 By **Matt Cabrices**.
 
-The current source is **0.4.0-alpha.34**, an unsigned development preview.
+The current source is **0.4.0-alpha.35**, an unsigned development preview.
 The latest installed check is alpha.34: Turbo activation passed, and restoration
 passed after one retry. The follow-up source fix for restoration order still
 needs an installed-build check. Automated tests and
@@ -22,10 +22,10 @@ binary release is published at the time of this November 9, 2026 audit.
 - Separate AC/battery boost and speed policies with read-back/recovery; reviewed
   Ryzen power fields, and Intel monitoring/policy controls with read-only PL1/PL2.
 - Firmware/manual/Max fan control, saved service curves with a Max threshold and
-  a configurable manual cutoff. Unknown thermal limits use an 85°C fallback.
+  a configurable cutoff for levels 1–7. Max cooling stays at Max above the cutoff while lease and sensor checks pass. Unknown thermal limits use an 85°C fallback.
 - Experimental [Turbo](TURBO.md), with captured prior settings and explicit Restore.
-  Its first installed activation aborted with a connection lease error; rollback
-  was verified. Successful activation still needs investigation and retesting.
+  Alpha.34 activation passed; Restore needed one retry. Alpha.35 includes the
+  restoration-order fix and Max-cooling thermal change, pending installed tests.
 - The pinned source-built TPFanCtrl2 2.5.1 with the documented fan-selector patch,
   unmodified signed EC module, original/modified sources, licenses and credits.
   See [dependency review](DEPENDENCY-REVIEW.md).
@@ -57,7 +57,7 @@ Setup errors appear in the GUI and `hardware-setup-error.txt`. A driver return
 code 3010 reports that Windows needs a restart; the app does not initiate one.
 Repair hardware support retries setup after the underlying issue is resolved.
 
-Minimize keeps manual cooling while the lease/telemetry/cutoff checks pass.
+Minimize keeps manual cooling while lease and telemetry checks pass. Levels 1–7 also require temperatures below the selected cutoff; Max stays at Max above it.
 Closing releases manual cooling to firmware; a saved service curve continues.
 **CPU policies and Turbo wattage requests remain until restored or replaced by
 firmware.** Exit is not a reset of those settings. Startup never enables Turbo.

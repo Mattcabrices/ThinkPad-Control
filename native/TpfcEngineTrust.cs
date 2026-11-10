@@ -8,7 +8,7 @@ internal static class TpfcEngineTrust
     // The source/download lock continues to identify the unmodified upstream asset.
     internal static string ReviewedEngineSha256 => typeof(TpfcEngineTrust).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>().SingleOrDefault(a=>a.Key=="TpfcEngineSha256")?.Value
-        ?? "A84A3E1076A2EA7BCB2B3FF68C0BE080447E1982FEE3D14F66A2BF2D1542B302";
+        ?? "8930720F8BBD1E4CC72670D24237C50F3FFB7E51E87B4DBFEF9A85FFE88ACCC3";
     internal static bool ImageMatches(string? imagePath,string engine) =>
         string.Equals(imagePath,"\""+engine+"\" -s",StringComparison.OrdinalIgnoreCase);
 

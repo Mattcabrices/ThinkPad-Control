@@ -32,10 +32,34 @@ $text=$text.Replace($anchor,$helper+[Environment]::NewLine+$anchor)
 $spinUp='this->fan1speed < 4000'
 if(([regex]::Matches($text,[regex]::Escape($spinUp))).Count -ne 2){throw 'Unexpected full-speed threshold call sites.'}
 $text=$text.Replace($spinUp,'this->fan1speed < 3000')
+# Both upstream thermal exits must preserve an explicit Max request, including
+# the intermediate level-7 spin-up stage. Other manual levels retain the cutoff.
+$thermal='this->CurrentMode == 3 && this->MaxTemp > this->ManModeExitInternal'
+if(([regex]::Matches($text,[regex]::Escape($thermal))).Count -ne 1){throw 'Unexpected manual thermal exit in fanstuff.'}
+$text=$text.Replace($thermal,$thermal+' && !this->ManualMaxCoolingRequested()')
+$maxHelper=@'
+bool FANCONTROL::ManualMaxCoolingRequested() {
+    char level[16] = {0};
+    ::GetDlgItemTextA(this->hwndDialog, 8310, level, sizeof(level));
+    const char* digits = level;
+    int base = 0;
+    if (level[0] == 'x' && level[1] == '\'') { digits += 2; base = 16; }
+    char* end = NULL;
+    const long requested = strtol(digits, &end, base);
+    return end != digits && requested == 64;
+}
+
+'@
+$text=$text.Replace($anchor,$maxHelper+[Environment]::NewLine+$anchor)
 [IO.File]::WriteAllText($cpp,$text,[Text.UTF8Encoding]::new($false))
+$modeCpp=Join-Path $upstream 'fancontrol\fancontrol.cpp'
+$text=[IO.File]::ReadAllText($modeCpp)
+if(([regex]::Matches($text,[regex]::Escape($thermal))).Count -ne 1){throw 'Unexpected manual thermal exit in timer.'}
+$text=$text.Replace($thermal,$thermal+' && !this->ManualMaxCoolingRequested()')
+[IO.File]::WriteAllText($modeCpp,$text,[Text.UTF8Encoding]::new($false))
 $text=[IO.File]::ReadAllText($header);$anchor='bool ReadEcRaw(FCSTATE* pfcstate);'
 if(([regex]::Matches($text,[regex]::Escape($anchor))).Count -ne 1){throw 'ReadEcRaw declaration changed.'}
-$text=$text.Replace($anchor,'bool SelectFan(bool secondary);'+[Environment]::NewLine+$anchor)
+$text=$text.Replace($anchor,'bool SelectFan(bool secondary);'+[Environment]::NewLine+'bool ManualMaxCoolingRequested();'+[Environment]::NewLine+$anchor)
 [IO.File]::WriteAllText($header,$text,[Text.UTF8Encoding]::new($false))
 $start=[Diagnostics.ProcessStartInfo]::new($MSBuild)
 $start.UseShellExecute=$false;$start.CreateNoWindow=$true

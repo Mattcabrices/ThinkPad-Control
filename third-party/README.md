@@ -2,7 +2,7 @@
 
 ThinkPad Control's original code is MIT. This does not relicense upstream code.
 
-We bundle a rebuild of mews-se/TPFanCtrl2 2.5.1 with the documented single-fan selector patch under
+We bundle a rebuild of mews-se/TPFanCtrl2 2.5.1 with the documented selector, spin-up and Max-cooling thermal patches under
 the Unlicense. Thanks to **troubadix**, the original TPFanControl author, and
 **ThinkPad-Forum, byrnes, Shuzhengz, FanDjango and mews-se** for maintaining and
 extending this work. Thanks to **namazso** for PawnIO and its signed EC module,

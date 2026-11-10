@@ -20,7 +20,7 @@ Unavailable sensors stay unavailable. A firmware thermal zone is not a confirmed
 
 ## Control cooling
 
-Cooling offers firmware automatic mode, supported manual fan levels and Max cooling, and saved temperature curves. The bundled configuration uses the primary fan; a second physical fan needs separate validation. Review the selected temperature cutoff before manual use. At that cutoff, lost connection or invalid telemetry, the worker requests firmware control. This does not raise the processor's thermal limit.
+Cooling offers firmware automatic mode, supported manual fan levels and Max cooling, and saved temperature curves. The bundled configuration uses the primary fan; a second physical fan needs separate validation. Review the selected temperature cutoff before manual use. In alpha.35, levels 1–7 return to firmware at the cutoff; Max cooling stays at Max as temperatures rise. Lost connection or invalid telemetry still releases Max. LHM percentage controls retain their 85°C cutoff. This does not raise the processor's thermal limit.
 
 Save a curve to keep it as a profile. Apply profile activates the saved curve; Save and apply commits edits and activates them. A saved service curve can continue after the window closes. Existing valid sensor adjustments are retained while fresh learning is incomplete; recommendations do not apply themselves. Firmware mode removes active curve corrections.
 
@@ -38,7 +38,7 @@ Advanced CPU tuning adapts to the processor. Reviewed Ryzen mappings expose veri
 
 Experimental Turbo saves the current settings, requests Max fan, removes the current-source speed cap, enables Maximum boost and raises only supported Ryzen wattage fields to reviewed ceilings. It leaves temperature limits unchanged. Use Restore previous settings to recover the captured policy, wattages and fan mode. If restoration fails, the recovery action remains available.
 
-IMPORTANT: closing, connection loss or the manual cutoff releases manual cooling to firmware, but Turbo power settings remain until restored. Startup never enables Turbo automatically. An interrupted session shows restoration pending. Other tuning controls remain locked until restoration; Return to firmware stays available. Alpha.34 activated on the T14s Gen 2; Restore needed one retry and then passed independent verification. A follow-up restoration-order fix is in source and still needs installed testing. See [validation results](RELEASE-VALIDATION.md).
+IMPORTANT: closing, connection loss or invalid telemetry releases manual cooling to firmware, but Turbo power settings remain until restored. Startup never enables Turbo automatically. An interrupted session shows restoration pending. Other tuning controls remain locked until restoration; Return to firmware stays available. Alpha.34 activated on the T14s Gen 2; Restore needed one retry and then passed independent verification. A follow-up restoration-order fix is in source and still needs installed testing. See [validation results](RELEASE-VALIDATION.md).
 
 Windows power policies and firmware power-limit requests may persist after exit. Closing the app is not a reset of those settings. Firmware still makes the final performance decision; continuous boost is not guaranteed.
 

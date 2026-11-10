@@ -2,9 +2,16 @@ TPFanCtrl2 2.5.1 local patch: avoid single-fan EC bank selection.
 Base: 878c8c0a751b4cce126d3b3b59dacf6268314239, upstream Unlicense.
 Replace four primary/secondary bank-write call sites with SelectFan(false/true).
 SelectFan skips EC 0x31 entirely for SingleFan, and preserves unrelated bits
-for dual-fan selection. No tachometer estimation, control mode or ABI changes.
+for dual-fan selection. No tachometer estimation or shared-state ABI changes.
 The independently written implementation follows Linux thinkpad_acpi register
 semantics. Also lower the full-speed spin-up threshold from 4000 to 3000 RPM at
 its two call sites, because level 7 can read below 4000 RPM and would never hand
 over to level 64. Exact substitutions are in scripts/build-fan-engine.ps1. The build
 ships both original and modified source archives with retained author credits.
+
+Max-cooling thermal behavior: both upstream manual-temperature exit sites now
+exclude an explicitly requested manual level 64. The helper reads the existing
+manual-level control using the same decimal/hex formats as upstream; it also
+preserves Max while its spin-up stage is temporarily level 7. Other manual
+levels retain ManModeExit. This does not alter CPU thermal limits, fan/EC error
+handling, shutdown restoration, or the worker's lease and sensor watchdogs.

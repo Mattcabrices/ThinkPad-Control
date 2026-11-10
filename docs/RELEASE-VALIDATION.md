@@ -1,5 +1,23 @@
 # Release validation
 
+## Alpha.35 Max-cooling thermal fix — isolated checks
+
+The previous native regression reproduces Max returning to firmware at the
+manual temperature cutoff. Alpha.35 exempts explicitly requested TPFanCtrl2 Max
+cooling from temperature-only handoff in both the worker and the engine's two
+thermal-exit sites. The engine uses the requested level, preserving Max during
+its temporary level-7 spin-up stage. Lower manual levels retain their cutoff.
+Lease expiry, stale/missing real temperature readings, closing, explicit firmware
+return and processor thermal limits remain unchanged. LHM percentage controls
+keep their existing thermal policy.
+
+All 238 application tests and 297 isolated native assertions pass. Native cases
+cover Max at/above the cutoff, hot spin-up, exact lease expiry, stale and missing
+readings, plus the existing lower-level thermal exits. The modified fan engine
+builds from pinned upstream source; matching original/modified sources and build
+provenance are packaged. These checks make no hardware writes. Installed Max
+behavior across a temperature threshold still needs verification on this build.
+
 ## Alpha.34 physical Turbo check — November 10, 2026
 
 One owner-approved activation on the T14s Gen 2 Ryzen 5 PRO 5650U passed.

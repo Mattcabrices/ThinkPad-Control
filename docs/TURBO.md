@@ -73,8 +73,12 @@ different device identity or invalid record refuses recovery/activation rather
 than guessing. Only settings Turbo attempted to change are restored; unrelated
 Windows settings are left alone.
 
-Minimizing retains manual cooling through the native lease/watchdog. Closing,
-connection loss or the manual cutoff releases manual cooling to firmware.
+Minimizing retains manual cooling through the native lease/watchdog. In alpha.35,
+TPFanCtrl2 Max cooling stays at Max above the manual cutoff; that cutoff still
+applies to levels 1–7. Closing, connection loss or missing/stale temperature
+readings release manual cooling to firmware. CPU thermal protection is unchanged.
+This requires the matching alpha.35 worker and engine; installed thermal-crossing
+verification remains pending.
 **Power settings remain until restored.** Startup, power-source changes and
 firmware overrides never automatically enable or reapply Turbo. An interrupted or
 restarted session shows restoration pending, not verified active. Restore before

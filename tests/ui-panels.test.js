@@ -131,7 +131,8 @@ test('manual cutoff UI exposes machine default and custom value without confusin
   vm.runInContext(component('fanPanel','fanProfilesPanel'),context);
   const walk=n=>[n,...n.children.flatMap(walk)];let nodes=walk(vm.runInContext('fanPanel()',context));
   assert.ok(nodes.some(n=>n.text==='Manual fan temperature limit'));
-  assert.match(nodes.map(n=>n.text??'').join(' '),/This includes manual Max mode/);
+  assert.match(nodes.map(n=>n.text??'').join(' '),/Max cooling stays at Max above this cutoff/);
+  assert.doesNotMatch(nodes.map(n=>n.text??'').join(' '),/This includes manual Max mode/);
   const checkbox=nodes.find(n=>n.type==='checkbox'),input=nodes.find(n=>n.type==='number');
   assert.equal(checkbox.checked,true);assert.equal(input.disabled,true);
   checkbox.checked=false;checkbox.events.change();input.value='90';input.events.input();
