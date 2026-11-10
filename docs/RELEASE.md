@@ -11,8 +11,7 @@ crossed. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
-Use [release validation](RELEASE-VALIDATION.md) for evidence. No public
-binary release is published at the time of this November 10, 2026 audit.
+Use [release validation](RELEASE-VALIDATION.md) for evidence. The [alpha.36 download](https://github.com/Mattcabrices/ThinkPad-Control/releases/tag/v0.4.0-alpha.36) is an unsigned experimental prerelease; signing and broader hardware validation remain open.
 
 ## What the candidate includes
 
@@ -41,7 +40,7 @@ and independent integrated AMD/Intel GPU boost are unavailable.
 ## Installation and lifetime
 
 Setup requests administrator approval, installs under Program Files, registers
-an on-demand worker task and configures the owned fan service automatically.
+an on-demand worker task and configures the owned fan service automatically. Hardware support is mandatory setup behavior, with no optional checkbox; the desktop shortcut is optional.
 When PawnIO is absent, setup downloads the pinned official installer with bounded
 release/API retries, checks its SHA256 and Windows trusted signature, then runs
 it once with fixed arguments. Temporary bytes are kept in a private directory
@@ -107,7 +106,7 @@ publisher trust. Bit-for-bit reproducible builds are not yet established.
 | Battery and physical recovery | Partial historical/isolated coverage | AC/battery, longer sessions, sensor/worker/service loss, crash exhaustion, sleep/resume/reboot matrix |
 | Upgrade/uninstall and account scope | Prior approved upgrades and ownership tests | Clean-device, independent uninstall, standard-user/alternate-account validation |
 | Trusted distribution | Signing tooling prepared | Publisher identity, real signing/timestamps and clean-policy acceptance |
-| Public announcement | Reviewed source-preview draft exists | Actual reviewed binary release/links and accurate tested scope before a binary announcement |
+| Public announcement | Owner authorized unsigned alpha.36 prerelease; tested scope and signing status retained | Confirm public asset availability before sharing download links |
 
 Only claim support demonstrated on the named model/build. Unknown readings and
 ignored firmware fields remain unavailable/read-only. A zero tachometer reading

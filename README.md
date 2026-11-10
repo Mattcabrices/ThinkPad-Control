@@ -57,11 +57,11 @@ Ryzen power limits set available power headroom, not a guaranteed power draw. Fi
 
 ## Getting started
 
-The source is available here. A validated public binary release is still pending; build outputs described below are development candidates.
+**[Download the alpha.36 Windows x64 installer](https://github.com/Mattcabrices/ThinkPad-Control/releases/download/v0.4.0-alpha.36/ThinkPad-Control-Setup-0.4.0-alpha.36-x64.exe)** · [Release notes, portable build, source and SHA256 checksums](https://github.com/Mattcabrices/ThinkPad-Control/releases/tag/v0.4.0-alpha.36). This is an unsigned experimental prerelease, not a stable production release.
 
 For an installer build, run `ThinkPad-Control-Setup-0.4.0-alpha.36-x64.exe`. Setup installs under Program Files, adds shortcuts and an uninstaller, and requests administrator approval to install hardware support. Node and .NET runtimes are included. WebView2 Runtime is required; setup links to Microsoft's download if missing. Initial driver/runtime acquisition needs internet access; normal operation needs no account, browser tab or terminal.
 
-The package includes a source-built **TPFanCtrl2 2.5.1**, our documented fan-selector patch, its signed EC module, credits and matching sources. Setup configures the engine and hardware worker automatically. If PawnIO is absent, its official installer is downloaded and its pinned hash and signature checked. An existing external TPFanControl service is reported as a conflict and left untouched.
+The package includes a source-built **TPFanCtrl2 2.5.1**, our documented fan-selector patch, its signed EC module, credits and matching sources. Setup installs hardware support automatically; there is no hardware-support checkbox to select. It configures the engine and hardware worker automatically. If PawnIO is absent, its official installer is downloaded and its pinned hash and signature checked. An existing external TPFanControl service is reported as a conflict and left untouched.
 
 Hardware access connects automatically through an on-demand task registered during setup for its recorded Windows account. Another account or a missing task may require hardware-access approval again. The interface normally runs without elevation. Unsigned components may be blocked by Windows application control; do not disable security features to run this preview. Trusted signing remains a planned release milestone.
 
