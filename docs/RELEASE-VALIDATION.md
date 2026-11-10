@@ -1,5 +1,20 @@
 # Release validation
 
+## Alpha.35 installed upgrade — November 10, 2026
+
+The owner approved the unsigned alpha.35 installer. Setup, hardware support and
+fan-configuration finalization succeeded without a reboot. All 113 immutable
+installed files matched the prepared manifest, including the new worker and
+patched fan engine; fresh telemetry and fan-engine access connected on reopening.
+CPU policies/boost, Ryzen limits, profiles, manual cutoff and exact fan INI were
+preserved. The starting firmware fan mode was restored and verified. Turbo was
+off with no pending recovery. No hot-run, Turbo activation or stress workload was
+performed after this upgrade; physical threshold-crossing and one-pass Restore
+validation remain open.
+
+Private evidence: `alpha35-installed-validation.json`, `alpha35-final-state.json`,
+`alpha35-before-upgrade.json`, `alpha35-before-upgrade.ini`, `alpha35-install.log`.
+
 ## Alpha.35 Max-cooling thermal fix — isolated checks
 
 The previous native regression reproduces Max returning to firmware at the
