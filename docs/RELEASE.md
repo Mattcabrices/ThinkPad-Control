@@ -3,15 +3,17 @@
 By **Matt Cabrices**.
 
 The current source is **0.4.0-alpha.36**, an unsigned development preview.
-The latest installed check is alpha.35: a bounded CPU hot run held Max cooling
-through 87.125°C, and Restore succeeded in one attempt. The unchanged 90°C manual
-cutoff was not crossed. Automated tests and
+The latest installed check is alpha.36: upgrade, hardware telemetry, preservation
+of settings and the honest Not reported firmware-range fallback passed on the
+T14s Gen 2 AMD. Alpha.35's bounded CPU hot run held Max cooling through 87.125°C,
+and Restore succeeded in one attempt. The unchanged 90°C manual cutoff was not
+crossed. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
 Use [release validation](RELEASE-VALIDATION.md) for evidence and the
 [announcement draft](ANNOUNCEMENT.md) for the reviewable Reddit post. No public
-binary release is published at the time of this November 9, 2026 audit.
+binary release is published at the time of this November 10, 2026 audit.
 
 ## What the candidate includes
 
@@ -24,8 +26,9 @@ binary release is published at the time of this November 9, 2026 audit.
 - Firmware/manual/Max fan control, saved service curves with a Max threshold and
   a configurable cutoff for levels 1–7. Max cooling stays at Max above the cutoff while lease and sensor checks pass. Unknown thermal limits use an 85°C fallback.
 - Experimental [Turbo](TURBO.md), with captured prior settings and explicit Restore.
-  Alpha.34 activation passed; Restore needed one retry. Alpha.35 includes the
-  restoration-order fix and Max-cooling thermal change, pending installed tests.
+  Alpha.35's bounded hot run verified activation, Max cooling and one-pass Restore.
+- Read-only firmware power ranges by profile, where Lenovo exposes them. These
+  are distinct from app tuning limits and do not establish an absolute safe maximum.
 - The pinned source-built TPFanCtrl2 2.5.1 with the documented fan-selector patch,
   unmodified signed EC module, original/modified sources, licenses and credits.
   See [dependency review](DEPENDENCY-REVIEW.md).

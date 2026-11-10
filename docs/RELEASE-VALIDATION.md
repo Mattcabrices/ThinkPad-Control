@@ -14,8 +14,23 @@ made for this feature.
 
 The T14s Gen 2's read-only capability query returned Invalid class. Positive
 reporting still requires a supporting device; alpha.35 hardware observations
-below do not certify this detector. No alpha.36 upgrade or hardware tuning was
-performed as part of implementing detection.
+below do not certify positive range detection.
+
+### Installed alpha.36 check — November 10, 2026
+
+The owner approved the unsigned alpha.36 upgrade. Setup, fan configuration
+migration and hardware support completed successfully without a restart. All
+113 immutable installed files matched the prepared package manifest. Fresh
+hardware telemetry connected, and firmware ranges correctly returned Not reported
+with no invented maximums. Before/after comparisons verified the full CPU policy,
+boost settings, four Ryzen limits, saved profiles, manual cutoff, curve/masks and
+exact fan configuration. Startup resumed the saved curve; one firmware-mode
+command restored the original fan mode. Turbo stayed off with no pending recovery.
+No CPU tuning, stress workload, sleep or reboot was part of this check.
+
+The prepared build passed 241 JavaScript tests, 315 isolated native assertions,
+a staged native smoke check and 40 demo desktop captures. Positive firmware
+range reporting remains fixture-tested until a supporting device is available.
 
 ## Alpha.35 bounded hot run — November 10, 2026
 
