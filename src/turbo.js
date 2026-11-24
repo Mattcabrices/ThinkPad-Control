@@ -44,7 +44,7 @@ export function planTurbo(s) {
     s.gpus?.some(g=>Number.isFinite(g.temperature)&&g.temperature>=cutoff))throw Error('Turbo requires fresh temperatures below the manual fan cutoff.');
   const profile=s.fanProfiles?.profiles?.find(p=>p.id===s.fanProfiles.activeId)??
     (s.fanProfiles?.currentCurve?{id:'captured-curve',...structuredClone(s.fanProfiles.currentCurve),valid:true}:null);
-  if(fan.mode==='curve'&&(!profile?.valid||s.fanProfiles.reapply))throw Error('The running fan curve cannot be captured safely. Apply a supported curve or return to firmware before enabling Turbo.');
+  if(fan.mode==='curve'&&(!profile?.valid||!s.fanProfiles.currentCurve))throw Error('The running fan curve cannot be captured safely. Apply a supported curve or return to firmware before enabling Turbo.');
   const targets=[],notes=[];
   if(s.ryzen?.available){
     for(const key of powerFields){
@@ -57,8 +57,14 @@ export function planTurbo(s) {
     }
   }else notes.push(s.cpuSteps?.vendor==='GenuineIntel'?'Intel wattage limits remain read-only.':'Direct wattage tuning is unavailable.');
   const ryzen=s.ryzen?.available?structuredClone(s.ryzen.current):null;
-  return {schemaVersion:1,identity:identity(s),createdAt:new Date().toISOString(),attempted:[],targets,notes,
+  const plan={schemaVersion:1,identity:identity(s),createdAt:new Date().toISOString(),attempted:[],targets,notes,
     before:{policy,ryzen,fan:{id:fan.id,mode:fan.mode,...(profile&&fan.mode==='curve'?{profile:structuredClone(profile),limit:s.fanProfiles.limit.celsius,masks:structuredClone(s.fanProfiles.maskedSlots??[])}:{})},boostRecovery:null}};
+  // New sensor-adjustment advice does not invalidate the curve already running.
+  // Preserve actual masks, never recommendations; require exact row read-back
+  // and a valid recovery record before reporting Turbo available or writing.
+  if(fan.mode==='curve'&&!turboCurveMatches(plan.before.fan,s))throw Error('The running fan curve cannot be captured safely. Apply a supported curve or return to firmware before enabling Turbo.');
+  validateJournal(plan);
+  return plan;
 }
 
 // One journal per backend/data directory. Never resumes Turbo automatically.

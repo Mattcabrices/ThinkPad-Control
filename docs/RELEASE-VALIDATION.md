@@ -1,5 +1,21 @@
 # Release validation
 
+## Alpha.37 advisory sensor-offset recovery fix — November 24, 2026
+
+A valid running Server inactive curve was refused by Turbo solely because the
+sensor watcher recommended an offset for a flat sensor. That advice does not make
+the actual current curve unrecoverable. Turbo now captures the applied offsets,
+never the recommended offsets, and validates the recovery record and exact curve
+read-back before reporting availability. Invalid masks, unknown curves and
+mismatched thresholds still refuse activation before any writes.
+
+All 244 JavaScript tests passed, including recovery across restart with both zero
+and existing applied offsets while different offsets are recommended. Saved
+profiles and actual offsets remain unchanged after simulated recovery. Planning
+against the captured real T14s snapshot passed without hardware writes. No real
+Turbo activation or stress workload was run for this change. Installed alpha.37
+verification remains pending; the published alpha.36 assets are unchanged.
+
 ## Alpha.36 firmware power ranges — isolated checks
 
 The optional Lenovo WMI capability collector reads CPU/APU minimum, default,

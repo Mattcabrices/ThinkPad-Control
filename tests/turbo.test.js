@@ -250,3 +250,38 @@ test('a UI lost during a worker reading aborts before the next hardware write',a
   await assert.rejects(turbo.command('enable'),/connection was lost.*restored and verified/);
   assert.equal(commands.length,0);assert.deepEqual(captured(await read()),before);
 });
+
+for(const masks of [[],[[11,30]]])test(`sensor-mask advice does not block exact curve recovery with ${masks.length} applied masks`,async()=>{
+  const {p,commands}=fixture();
+  await p.command({type:'fan-profile-apply',id:'default-2'});
+  p.fanCurve.masks=structuredClone(masks);
+  const snapshot=p.snapshot.bind(p);
+  p.snapshot=async()=>{const s=await snapshot();if(s.fans[0].mode==='curve'){
+    s.fanProfiles.reapply=true;
+    s.fanProfiles.recommendedMasks=[[10,31]];
+  }return s;};
+  const before=await p.snapshot(),rows=structuredClone(p.fanCurve.rows),profiles=structuredClone(before.fanProfiles.profiles);
+  const directory=mkdtempSync(join(tmpdir(),'thinkpad-mask-advice-'));
+  try{
+    const file=join(directory,'recovery.json'),turbo=new TurboController(p,{file});
+    assert.equal(turbo.view(before).available,true);
+    assert.deepEqual(planTurbo(before).before.fan.masks,masks,'Capture actual offsets, never recommended offsets');
+    await turbo.command('enable');
+    const restarted=new TurboController(p,{file});await restarted.command('restore');
+    const after=await p.snapshot();
+    assert.deepEqual(p.fanCurve.rows,rows);assert.deepEqual(p.fanCurve.masks,masks);
+    assert.deepEqual(after.fanProfiles.profiles,profiles);assert.deepEqual(captured(after),captured(before));
+    assert.equal(after.fanProfiles.reapply,true,'Advice must remain advisory after restoration');
+    assert.equal(restarted.saved,null);assert.equal(restarted.view(after).available,true);
+    assert.ok(!commands.some(c=>c.type==='fan-profile-save'),'Do not rewrite saved profiles');
+  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+
+test('curve mismatch or invalid actual sensor masks still refuse Turbo before writes',async()=>{
+  for(const corrupt of [s=>s.fanProfiles.currentCurve.maxTemp--,s=>s.fanProfiles.maskedSlots=[[12,31]]]){
+    const {p,turbo,commands}=fixture();await p.command({type:'fan-profile-apply',id:'default-2'});commands.length=0;
+    const snapshot=p.snapshot.bind(p);p.snapshot=async()=>{const s=await snapshot();s.fanProfiles.reapply=true;corrupt(s);return s;};
+    assert.equal(turbo.view(await p.snapshot()).available,false);
+    await assert.rejects(turbo.command('enable'));assert.equal(commands.length,0);assert.equal(turbo.saved,null);
+  }
+});
