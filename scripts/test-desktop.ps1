@@ -24,6 +24,12 @@ foreach ($item in $profiles) {
         $child = Start-Process -FilePath $executable -ArgumentList $demoFlag,$checkFlag -WindowStyle Hidden -PassThru
         if (-not $child.WaitForExit(60000)) { throw 'The demo exceeded its independent 55-second process deadline.' }
         $report = Get-Content -Raw -LiteralPath (Join-Path $directory 'desktop-smoke.json') | ConvertFrom-Json
+        $stages = @(Get-Content -LiteralPath (Join-Path $directory 'desktop-smoke-trace.jsonl') | ForEach-Object { ($_ | ConvertFrom-Json).stage })
+        $earlyActivation = [array]::IndexOf($stages,'activation-before-handle-queued')
+        $deliveredActivation = [array]::IndexOf($stages,'activation-delivered')
+        if ($earlyActivation -lt 0 -or $deliveredActivation -le $earlyActivation) {
+            throw 'Early window activation was not retained and delivered after handle creation.'
+        }
         if ($child.ExitCode -ne 0 -or $report.schemaVersion -ne 2 -or -not $report.passed -or
             $report.profile -ne $item.ToLowerInvariant() -or -not $report.checks.desktop -or
             $report.checks.metrics -lt 4 -or -not $report.checks.hardwareDisabled -or -not $report.checks.setupDisabled -or -not $report.checks.navigationReadable) {

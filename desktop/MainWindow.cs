@@ -14,6 +14,7 @@ internal sealed partial class MainWindow : Form
     private readonly BackendHost backend;
     private readonly bool demo;
     private readonly RegisteredWaitHandle activation;
+    private readonly WindowActivation windowActivation;
     private readonly ToolStripMenuItem elevate;
     private readonly ToolStripMenuItem hardwareAccess;
     private bool hardwareEnabled;
@@ -63,7 +64,10 @@ internal sealed partial class MainWindow : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit",null,async(_,_)=>await Quit());
         tray=new NotifyIcon {Icon=Icon,Text=Text,ContextMenuStrip=menu,Visible=!smokeMode};tray.DoubleClick+=(_,_)=>ShowWindow();
-        activation=ThreadPool.RegisterWaitForSingleObject(activate,(_,_)=>{if(!IsDisposed)BeginInvoke(ShowWindow);},null,Timeout.Infinite,false);
+        windowActivation=new(TryPostToWindow,ShowWindow);
+        HandleCreated+=(_,_)=>windowActivation.HandleReady();
+        Disposed+=(_,_)=>windowActivation.Stop();
+        activation=ThreadPool.RegisterWaitForSingleObject(activate,(_,_)=>windowActivation.Request(),null,Timeout.Infinite,false);
         Shown+=async(_,_)=>await Initialize();
         FormClosing+=(_,e)=>{if(!quitting){e.Cancel=true;manualLeaseEnabled=false;Hide();_ = ReleaseOnHide();}};
         Resize+=(_,_)=>{if(WindowState==FormWindowState.Minimized)Hide();};
@@ -78,8 +82,11 @@ internal sealed partial class MainWindow : Form
             finally{fanLeaseGate.Release();leaseTickBusy=false;}
         };
         fanLeaseTimer.Start();
-        backend.Exited+=()=>{if(!quitting&&!IsDisposed)BeginInvoke(()=>ShowFailure("The background process stopped. Use Restart to reconnect."));};
+        backend.Exited+=()=>TryPostToWindow(()=>{if(!quitting)ShowFailure("The background process stopped. Use Restart to reconnect.");});
         if(smokeMode) {
+            // Reproduce a second launch before the native handle exists.
+            windowActivation.Request();
+            SmokeTrace("activation-before-handle-queued");
             // WebView2 needs a visible native host to finish controller initialization.
             // Keep that host out of the taskbar and non-activating for unattended tests.
             ShowInTaskbar=false;
@@ -111,7 +118,13 @@ internal sealed partial class MainWindow : Form
         Environment.ExitCode=passed?0:1;
         await Quit();
     }
-    private void ShowWindow() { manualLeaseEnabled=true;Show();WindowState=FormWindowState.Normal;Activate(); }
+    private void ShowWindow() { manualLeaseEnabled=true;Show();WindowState=FormWindowState.Normal;Activate();SmokeTrace("activation-delivered"); }
+    private bool TryPostToWindow(Action action)
+    {
+        if(quitting||IsDisposed||Disposing||!IsHandleCreated)return false;
+        try { BeginInvoke(action);return true; }
+        catch(InvalidOperationException) { return false; } // Handle destroyed between check and post.
+    }
     private async Task ReleaseOnHide() {
         await fanLeaseGate.WaitAsync();
         try{await backend.ReleaseFans();}catch{}finally{fanLeaseGate.Release();}
@@ -331,6 +344,7 @@ internal sealed partial class MainWindow : Form
     private async Task Quit()
     {
         if(quitting)return;quitting=true;tray.Visible=false;
+        windowActivation.Stop();
         manualLeaseEnabled=false;fanLeaseTimer.Dispose();
         await ReleaseOnHide();
         smokeTimer?.Dispose();

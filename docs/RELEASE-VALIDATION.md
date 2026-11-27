@@ -1,5 +1,33 @@
 # Release validation
 
+## Alpha.38 early window activation fix — November 26, 2026
+
+By **Matt Cabrices**.
+
+Windows recorded an unhandled activation callback exception on the T14s when a
+second launch requested the existing window before WinForms created its native
+handle. The desktop now retains that request until handle creation, coalesces
+repeated requests and cancels queued activation on shutdown. Posting also handles
+a window being disposed between checking its handle and enqueueing the callback.
+This fixes the confirmed startup race; it does not claim every possible startup
+failure is resolved.
+
+The separate fan engine had stopped publishing despite its service reporting
+Running. A graceful restart restored telemetry; fan level 7 then read back at
+3,800 RPM with standard boost mode 1 and the owner's unchanged 3.1 GHz AC cap.
+This recovery was an operational action, not a new automatic recovery feature.
+No 80°C boost guard was enabled. The installed alpha.37 remains running while
+alpha.38 is built and tested separately; no upgrade, Turbo run or stress test is
+part of this release check. The public download remains alpha.36.
+
+Release checks passed: 244 JavaScript tests, 324 isolated native assertions, and
+packaged Ryzen/Intel demo desktop checks. The desktop checks require an early
+activation request to be queued before handle creation and delivered afterward;
+the Ryzen check also verifies minimized manual ownership, release on close and
+renewal after reopening. These simulated checks do not replace installed hardware
+validation of alpha.38. Installer and portable builds include the reviewed fan
+engine, hardware setup scripts and third-party notices; setup is unchanged.
+
 ## Alpha.37 advisory sensor-offset recovery fix — November 24, 2026
 
 A valid running Server inactive curve was refused by Turbo solely because the
@@ -14,7 +42,8 @@ and existing applied offsets while different offsets are recommended. Saved
 profiles and actual offsets remain unchanged after simulated recovery. Planning
 against the captured real T14s snapshot passed without hardware writes. No real
 Turbo activation or stress workload was run for this change. Installed alpha.37
-verification remains pending; the published alpha.36 assets are unchanged.
+verification subsequently passed with settings preserved and telemetry connected;
+the published alpha.36 assets are unchanged.
 
 ## Alpha.36 firmware power ranges — isolated checks
 

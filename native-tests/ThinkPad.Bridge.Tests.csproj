@@ -32,6 +32,7 @@
     <Compile Include="../desktop/WorkerTask.cs" Link="WorkerTask.cs" />
     <Compile Include="../desktop/BackendHost.cs" Link="BackendHost.cs" />
     <Compile Include="../desktop/StartupMode.cs" Link="StartupMode.cs" />
+    <Compile Include="../desktop/WindowActivation.cs" Link="WindowActivation.cs" />
   </ItemGroup>
 </Project>
 

@@ -10,6 +10,31 @@ view.Write(32,255);view.Write(36,255); // invalid tachometer sentinel
 using var adapter=new TpfcAdapter(name,()=>now);
 var checks=0;
 void Check(bool value,string message) { if(!value) throw new Exception(message); checks++; }
+// Simulate the Start-menu signal before HWND creation, including concurrent
+// signals and shutdown while an activation is already on the UI queue.
+var activationQueue=new Queue<Action>();var handleReady=false;var windowShowCount=0;
+var activationRequests=new ThinkPad.Desktop.WindowActivation(action=>{
+    if(!handleReady)return false;
+    activationQueue.Enqueue(action);return true;
+},()=>windowShowCount++);
+activationRequests.Request();activationRequests.Request();
+Check(activationQueue.Count==0&&windowShowCount==0,"Early launch requests wait for a native handle.");
+handleReady=true;activationRequests.HandleReady();activationRequests.HandleReady();
+Check(activationQueue.Count==1,"Handle creation schedules one pending activation.");
+Parallel.For(0,100,_=>activationRequests.Request());
+Check(activationQueue.Count==1,"Concurrent duplicate launches coalesce before UI delivery.");
+activationQueue.Dequeue()();
+Check(windowShowCount==1,"The early request is delivered on the UI queue.");
+activationRequests.Request();activationQueue.Dequeue()();
+Check(windowShowCount==2,"A later launch can activate the existing window again.");
+handleReady=false;activationRequests.Request();
+Check(activationQueue.Count==0,"A failed post retains the pending request without spinning.");
+handleReady=true;activationRequests.HandleReady();activationQueue.Dequeue()();
+Check(windowShowCount==3,"A recreated handle retries the retained request.");
+activationRequests.Request();activationRequests.Stop();activationQueue.Dequeue()();
+Check(windowShowCount==3,"Shutdown cancels activation that was already queued.");
+activationRequests.Request();activationRequests.HandleReady();
+Check(activationQueue.Count==0,"Signals after shutdown cannot queue more UI work.");
 foreach(var flag in new[]{"--smoke-test","--visual-test"}) {
     Check(!ThinkPad.Desktop.StartupMode.Parse([flag]).Allowed,"Unattended checks cannot start a live window or worker.");
     foreach(var profile in new[]{"--demo","--demo-intel"}) {

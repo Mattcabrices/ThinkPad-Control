@@ -2,8 +2,8 @@
 
 By **Matt Cabrices**.
 
-The current source is **0.4.0-alpha.37**, an unsigned development preview. The public download remains alpha.36 pending the next installed validation.
-The latest installed check is alpha.36: upgrade, hardware telemetry, preservation
+The current source is **0.4.0-alpha.38**, an unsigned development preview. The public download remains alpha.36 pending the next installed validation.
+The latest installed check is alpha.37: upgrade, hardware telemetry, preservation
 of settings and the honest Not reported firmware-range fallback passed on the
 T14s Gen 2 AMD. Alpha.35's bounded CPU hot run held Max cooling through 87.125°C,
 and Restore succeeded in one attempt. The unchanged 90°C manual cutoff was not

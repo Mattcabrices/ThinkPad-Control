@@ -13,7 +13,7 @@ where supported, with per-profile ranges and an explicit Not reported fallback.
 This does not remove tuning caps or enable unsupported controls; the installed
 alpha.35 hardware results below are separate from this new detector's testing.
 
-**Current source: 0.4.0-alpha.37, an unsigned development preview; the public download below remains alpha.36.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
+**Current source: 0.4.0-alpha.38, an unsigned development preview; the public download below remains alpha.36.** It is not yet a production release or a promise of universal ThinkPad support. Hardware observations exist for the T14s Gen 2 AMD and T14 Gen 3 AMD; the complete recovery/device matrix and installed Turbo validation remain open. See [compatibility](docs/COMPATIBILITY.md) and [release checks](docs/RELEASE.md).
 
 **Latest installed Turbo check:** alpha.35 passed a bounded CPU hot run on the
 T14s Gen 2 with 40 W burst / 30 W average limit read-back, Maximum boost and Max
