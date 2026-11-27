@@ -2,7 +2,7 @@
 
 By **Matt Cabrices**.
 
-The current source is **0.4.0-alpha.38**, an unsigned development preview. The public download remains alpha.36 pending the next installed validation.
+The current source is **0.4.0-alpha.38**, an unsigned development preview. The public download is alpha.38; installed hardware validation of this build remains pending.
 The latest installed check is alpha.37: upgrade, hardware telemetry, preservation
 of settings and the honest Not reported firmware-range fallback passed on the
 T14s Gen 2 AMD. Alpha.35's bounded CPU hot run held Max cooling through 87.125°C,
@@ -11,7 +11,7 @@ crossed. Automated tests and
 simulated screenshots do not establish production hardware compatibility.
 
 Source: [Mattcabrices/ThinkPad-Control](https://github.com/Mattcabrices/ThinkPad-Control).
-Use [release validation](RELEASE-VALIDATION.md) for evidence. The [alpha.36 download](https://github.com/Mattcabrices/ThinkPad-Control/releases/tag/v0.4.0-alpha.36) is an unsigned experimental prerelease; signing and broader hardware validation remain open.
+Use [release validation](RELEASE-VALIDATION.md) for evidence. The [alpha.38 download](https://github.com/Mattcabrices/ThinkPad-Control/releases/tag/v0.4.0-alpha.38) is an unsigned experimental prerelease; signing and broader hardware validation remain open.
 
 ## What the candidate includes
 
